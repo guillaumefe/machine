@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VM Debian avec v86</title>
+    <!-- Import de la librairie v86 depuis un CDN fiable -->
+    <script src="https://unpkg.com/v86@latest/build/libv86.js"></script>
+    <style>
+        body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #screen_container { display: flex; flex-direction: column; align-items: center; }
+        #screen { border: 2px solid #444; }
+    </style>
+</head>
+<body>
+    <div id="screen_container">
+        <!-- Console fallback -->
+        <div style="white-space: pre; font: 14px monospace; line-height: 14px; color: #0f0;"></div>
+        <!-- Canvas for VM display -->
+        <canvas id="screen" width="800" height="600"></canvas>
+    </div>
+
+    <script>
+        // Instanciation de l'émulateur v86 pour Debian Live XFCE
+        var emulator = new V86({
+            wasm_path: "https://unpkg.com/v86@latest/build/v86.wasm",
+            memory_size: 512 * 1024 * 1024,  // 512 Mo de RAM
+            vga_memory_size: 2 * 1024 * 1024, // 2 Mo de VRAM
+            screen_container: document.getElementById("screen_container"),
+            bios: { url: "https://raw.githubusercontent.com/copy/v86/master/bios/seabios.bin" },
+            vga_bios: { url: "https://raw.githubusercontent.com/copy/v86/master/bios/vgabios.bin" },
+            cdrom: { url: "https://raw.githubusercontent.com/copy/images/master/linux.iso" },
+            autostart: true,
+            screen: { canvas: document.getElementById("screen") }
+        });
+    </script>
+</body>
+</html>
