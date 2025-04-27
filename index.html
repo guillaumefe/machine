@@ -142,6 +142,11 @@ if (fb.children.length === 0) {
   let shiftDown=false;
   let capsLock=false;
   let readyToStart = false;
+  function allResourcesLoaded() {
+    if (readyToStart) {
+      startBtn.disabled = false;
+    }
+  }
   function log(m){fb.textContent+=(fb.textContent?"\n":"")+m;fb.scrollTop=fb.scrollHeight;}
   const toast = document.getElementById("toast");
   function showToast(message = "Success", duration = 3000) {
@@ -409,11 +414,6 @@ vmUrl.onchange = async () => {
   };
   log("⏳ Waiting for your actions…");
 });
-function allResourcesLoaded() {
-  if (readyToStart) {
-    startBtn.disabled = false;
-  }
-}
 const tutorialBtn = document.getElementById("tutorial-btn");
 const tutorialPopup = document.getElementById("tutorial-popup");
 const closeTutorial = document.getElementById("close-tutorial");
