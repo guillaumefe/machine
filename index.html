@@ -358,6 +358,7 @@ vmUrl.onchange = async () => {
     prog.style.width="0%";
     const hda = { url: vmSource.url, async: true };
     const bootOptions = document.getElementById("boot-options").value.trim();
+    requestAnimationFrame(() => {
     emulator=new V86({
       wasm_path:V86_WASM,
       bios:{url:V86_SEABIOS},
@@ -396,6 +397,7 @@ vmUrl.onchange = async () => {
      showToast("Updated image ready to be downloaded");
      log("💤 VM stopped.\nWaiting for your actions…");
     });
+  });
   };
   stopBtn.onclick=()=>{
     if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;dlHda.disabled=false;overlay.style.display="none";fb.textContent="";}
