@@ -311,62 +311,102 @@ const codeToScancodes = {
   });
   updateVK();
 
-const flatLayout   = keyLayout.flat();
-const SHIFT_MK     = 42,   SHIFT_BK = 170;
-const autoShifted  = new Set();
+const flatLayout    = keyLayout.flat();
+const SHIFT_MK      = codeToScancodes["ShiftLeft"][0];
+const SHIFT_BK      = codeToScancodes["ShiftLeft"][1];
+const ALT_GRAPH_MK  = codeToScancodes["AltRight"][0];
+const ALT_GRAPH_BK  = codeToScancodes["AltRight"][1];
+const autoShifted   = new Set();
+
+const altGraphMap = {
+  "@": 23,  // QWERTY 'I' key → @
+  "€": 13,  // QWERTY '=' key → €
+  "{": 26,  // '['
+  "}": 27,  // ']'
+  "|": 43,  // '\'
+};
 
 function getKeyInfo(e) {
-  // 1) Recherche caractère imprimable
   let keyObj = flatLayout.find(k => k.n === e.key);
-  let needShift = false;
+  let useShift   = false;
+  let useAltGr   = false;
 
   if (!keyObj) {
     keyObj = flatLayout.find(k => k.s === e.key);
-    if (keyObj) needShift = true;
+    if (keyObj) useShift = true;
+  }
+
+  if (!keyObj && altGraphMap[e.key] !== undefined) {
+    const mk = altGraphMap[e.key];
+    keyObj = flatLayout.find(k => k.mk === mk);
+    useAltGr = true;
   }
 
   if (keyObj) {
-    return { make: keyObj.mk, break: keyObj.bk, needShift };
+    return {
+      make:      keyObj.mk,
+      break:     keyObj.bk,
+      useShift,
+      useAltGr
+    };
   }
 
-  // 2) Fallback touches de contrôle (Tab, Enter…)
   const sc = codeToScancodes[e.code];
   if (sc) {
-    return { make: sc[0], break: sc[1], needShift: false };
+    return {
+      make:      sc[0],
+      break:     sc[1],
+      useShift:  false,
+      useAltGr:  false
+    };
   }
 
-  // 3) Inconnu
   return null;
 }
 
+// keydown
 document.addEventListener("keydown", e => {
   if (e.repeat) return;
   const info = getKeyInfo(e);
   if (!info) return;
+
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (!info.needShift && e.getModifierState("Shift")) {
-    emulator?.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.add(info.make);
+
+  if (info.useAltGr) {
+    emulator?.keyboard_send_scancodes([ALT_GRAPH_MK]);
     emulator?.keyboard_send_scancodes([info.make]);
-    emulator?.keyboard_send_scancodes([SHIFT_MK]);
   } else {
-    if (info.needShift && !e.getModifierState("Shift")) {
+    if (info.useShift && !e.getModifierState("Shift")) {
       emulator?.keyboard_send_scancodes([SHIFT_MK]);
       autoShifted.add(info.make);
     }
     emulator?.keyboard_send_scancodes([info.make]);
   }
+
   const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
 
+// keyup
 document.addEventListener("keyup", e => {
   const info = getKeyInfo(e);
   if (!info) return;
+
   e.preventDefault();
   e.stopImmediatePropagation();
-  emulator?.keyboard_send_scancodes([info.break]);
+
+  if (info.useAltGr) {
+    emulator?.keyboard_send_scancodes([info.break]);
+    emulator?.keyboard_send_scancodes([ALT_GRAPH_BK]);
+  } else {
+    emulator?.keyboard_send_scancodes([info.break]);
+    if (info.useShift && autoShifted.has(info.make)) {
+      emulator?.keyboard_send_scancodes([SHIFT_BK]);
+      autoShifted.delete(info.make);
+    }
+  }
+
   const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.remove("pressed");
 }, true);
