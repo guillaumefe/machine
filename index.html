@@ -304,7 +304,7 @@ vmUrl.onchange = async () => {
     fb.textContent="";
     overlay.style.display="flex";
     prog.style.width="0%";
-    const hda=vmSource.buffer?{buffer:vmSource.buffer}:{url:vmSource.url,async:true,cdrom:true};
+    const hda=vmSource.buffer?{buffer:vmSource.buffer,cdrom: true}:{url:vmSource.url,async:true,cdrom:true};
     const bootOptions = document.getElementById("boot-options").value.trim();
     emulator=new V86({
       wasm_path:V86_WASM,
