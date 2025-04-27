@@ -367,7 +367,7 @@ vmUrl.onchange = async () => {
       ...(bootOptions && { cmdline: bootOptions })
     });
     stopBtn.disabled=false;
-    emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";}if (e.loaded === e.total) {allResourcesLoaded();});
+    emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";if (e.loaded === e.total) {allResourcesLoaded();}});
     emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";dlHda.disabled=true;log("🎉 VM ready");});
     emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;dlHda.disabled=true;});
     emulator.add_listener("emulator-stopped", () => {
