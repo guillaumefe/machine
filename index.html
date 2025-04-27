@@ -366,31 +366,34 @@ function getKeyInfo(e) {
 
 document.addEventListener("keydown", e => {
   if (e.repeat) return;
-  const info = getKeyInfo(e);
-  if (!info) return;
+  const sc = codeToScancodes[e.code];
+  if (!sc) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (info.needShift && !e.getModifierState("Shift")) {
-    emulator?.keyboard_send_scancodes([SHIFT_MK]);
-    autoShifted.add(info.make);
+  const [make, brk] = sc;
+  const isDigit = /^Digit[0-9]$/.test(e.code);
+  let suppressed = false;
+  if (isDigit && e.getModifierState("Shift")) {
+    emulator?.keyboard_send_scancodes([SHIFT_BK]);
+    suppressed = true;
   }
-  emulator?.keyboard_send_scancodes([info.make]);
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  emulator?.keyboard_send_scancodes([make]);
+  if (suppressed) {
+    emulator?.keyboard_send_scancodes([SHIFT_MK]);
+  }
+  const btn = vk.querySelector(`.vk-key[data-make="${make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
 
 document.addEventListener("keyup", e => {
-  const info = getKeyInfo(e);
-  if (!info) return;
+  const sc = codeToScancodes[e.code];
+  if (!sc) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  emulator?.keyboard_send_scancodes([info.break]);
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  const [make, brk] = sc;
+  emulator?.keyboard_send_scancodes([brk]);
+  const btn = vk.querySelector(`.vk-key[data-make="${make}"]`);
   if (btn) btn.classList.remove("pressed");
-  if (info.needShift && autoShifted.has(info.make)) {
-    emulator?.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.delete(info.make);
-  }
 }, true);
 
   vk.addEventListener("mousedown",e=>{
