@@ -108,11 +108,6 @@ window.addEventListener("DOMContentLoaded",async()=>{
   const vmFile=document.getElementById("vm-file");
   const vmUrl=document.getElementById("vm-url");
   const startBtn=document.getElementById("start-btn");
-  startBtn.addEventListener("mousedown", () => {
-    if (!startBtn.disabled) {
-      startBtn.disabled = true;
-    }
-  });
   const stopBtn=document.getElementById("stop-btn");
   const fb=document.getElementById("fallback");
 
@@ -371,12 +366,7 @@ vmUrl.onchange = async () => {
       ...(bootOptions && { cmdline: bootOptions })
     });
     stopBtn.disabled=false;
-    emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";});
-    emulator.add_listener("download-progress", e => {
-      if (e.loaded === e.total) {
-        allResourcesLoaded();
-      }
-    });
+    emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";}if (e.loaded === e.total) {allResourcesLoaded();});
     emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";dlHda.disabled=true;log("🎉 VM ready");});
     emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;dlHda.disabled=true;});
     emulator.add_listener("emulator-stopped",()=>{stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";dlHda.disabled=false;emulator=null;showToast("Updated image ready to be downloaded");log("💤 VM stopped.\nWaiting for your actions…");});
@@ -399,7 +389,6 @@ vmUrl.onchange = async () => {
   log("⏳ Waiting for your actions…");
 });
 function allResourcesLoaded() {
-  // ici, on sait que WASM, BIOS, VGA-BIOS sont là
   if (readyToStart) {
     startBtn.disabled = false;
   }
