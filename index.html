@@ -349,6 +349,7 @@ vmUrl.onchange = async () => {
       vga_memory_size:16*1024*1024,
       hda,
       ...(usbBuf&&{hdb:{buffer:usbBuf,size:usbBuf.byteLength}}),
+      network_relay_url: "wss://relay.widgetry.org/",
       serial_container: fb || document.createElement("div"),
       screen_container:document.getElementById("screen_container"),
       screen:{canvas:document.getElementById("screen")},
