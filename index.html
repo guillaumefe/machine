@@ -51,11 +51,6 @@ nav input { display:none; }
 .vk-key[data-n="␣"] {
   flex: 0 0 10rem
 }
-label.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-  cursor: not-allowed;
-}
 </style>
 <script src="./libv86.js"></script>
 </head>
@@ -553,7 +548,6 @@ vmUrl.onchange = async () => {
     });
     stopBtn.disabled=false;
     loadUsb.disabled=true;
-    document.querySelector('label[for="load-usb"]').classList.add('disabled');
     emulator.add_listener("download-progress", e => {
      if (e.total && e.loaded) {
        prog.style.width = Math.floor(e.loaded / e.total * 100) + "%";
@@ -586,7 +580,6 @@ vmUrl.onchange = async () => {
       startBtn.disabled=false;
       dlHda.disabled=false;
       loadUsb.disabled = false;
-      document.querySelector('label[for="load-usb"]').classList.remove('disabled');
       overlay.style.display="none";
       fb.textContent="";
     }
