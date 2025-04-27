@@ -20,6 +20,11 @@ nav.visible { transform:translateX(0); }
 .menu-header h2 { margin:0; font-size:1rem; }
 .menu-header button { background:none; border:none; color:#eee; font-size:1.2rem; cursor:pointer; }
 nav label, nav button { background:#222; border:1px solid #555; border-radius:4px; color:#eee; padding:.5rem; cursor:pointer; width:calc(100% - 2rem); margin:.25rem 1rem; text-align:left; }
+nav button:disabled {
+  color: #888;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 nav input { display:none; }
 #main { display:flex; flex-direction:column; height:calc(100% - 2.5rem); position:relative; }
 #screen_container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem; overflow:hidden; position:relative; }
