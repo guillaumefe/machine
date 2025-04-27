@@ -59,6 +59,7 @@ nav input { display:none; }
     <input type="file" id="load-usb" accept=".img">
     <button id="download-disk-btn">Download VM Image</button>
     <button id="download-usb-btn" disabled>Download USB Image</button>
+    <button id="tutorial-btn">📖 Tutorial</button>
   </nav>
   <div id="screen_container">
     <div id="fallback"></div>
@@ -66,6 +67,24 @@ nav input { display:none; }
     <div id="loading-overlay">Loading VM…<div id="progress-bar"><div id="progress"></div></div></div>
   </div>
   <div id="virtual-keyboard"></div>
+</div>
+<div id="tutorial-popup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#eee; overflow:auto; z-index:500; padding:2rem; font-family:monospace;">
+  <div style="max-width:800px; margin:0 auto;">
+    <h1>How to Create a Bootable Disk from an ISO</h1>
+    <ol style="line-height:1.6;">
+      <li><b>Install QEMU</b> on your computer.</li>
+      <li><b>Create a new empty disk</b>:
+        <pre>qemu-img create -f raw disk.img 2G</pre>
+      </li>
+      <li><b>Start a virtual machine</b> using the ISO and the new disk:
+        <pre>qemu-system-x86_64 -hda disk.img -cdrom your.iso -boot d</pre>
+      </li>
+      <li><b>Inside the VM</b>, install the system onto the disk following the normal setup process.</li>
+      <li><b>Shutdown the VM</b> once the installation is complete.</li>
+      <li><b>Use the generated <code>disk.img</code></b> as your bootable hard drive image.</li>
+    </ol>
+    <button id="close-tutorial" style="margin-top:2rem; padding:0.5rem 1rem; background:#333; border:1px solid #555; border-radius:4px; color:#eee; font-size:1rem; cursor:pointer;">Close</button>
+  </div>
 </div>
 <script>
 const V86_SCRIPT='./libv86.js';
@@ -336,6 +355,17 @@ vmUrl.onchange = async () => {
   dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
   log("⏳ Waiting for your actions…");
 });
+const tutorialBtn = document.getElementById("tutorial-btn");
+const tutorialPopup = document.getElementById("tutorial-popup");
+const closeTutorial = document.getElementById("close-tutorial");
+
+tutorialBtn.onclick = () => {
+  tutorialPopup.style.display = "block";
+};
+
+closeTutorial.onclick = () => {
+  tutorialPopup.style.display = "none";
+};
 </script>
 </body>
 </html>
