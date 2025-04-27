@@ -57,7 +57,6 @@ nav input { display:none; }
     </div>
     <label for="load-usb">Load USB Image</label>
     <input type="file" id="load-usb" accept=".img">
-    <button id="download-disk-btn">Download VM Image</button>
     <button id="download-usb-btn" disabled>Download USB Image</button>
     <button id="tutorial-btn">📖 Tutorial</button>
   </nav>
@@ -116,7 +115,6 @@ if (fb.children.length === 0) {
     }
 }
   const loadUsb=document.getElementById("load-usb");
-  const dlVm=document.getElementById("download-disk-btn");
   const dlUsb=document.getElementById("download-usb-btn");
   const overlay=document.getElementById("loading-overlay");
   const prog=document.getElementById("progress");
@@ -351,7 +349,6 @@ vmUrl.onchange = async () => {
   stopBtn.onclick=()=>{
     if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";fb.textContent="";}
   };
-  dlVm.onclick=()=>{if(!emulator?.disk_images?.hda)return;const img=emulator.disk_images.hda;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="vm.img";a.click();});};
   dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
   log("⏳ Waiting for your actions…");
 });
