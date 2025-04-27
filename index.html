@@ -251,20 +251,20 @@ if (b.classList.contains("vk-key")) {
         e.target.value = ""; 
         return;
     }
-    const r=new FileReader();
-    r.onload = () => {
-        vmSource = { buffer: r.result };
-        setTimeout(() => { 
-            startBtn.disabled = false;
-        }, 0);
-        vmUrl.value = "";
-    };
-    r.readAsArrayBuffer(f);
+    vmSource = { url: URL.createObjectURL(f), async: true };
+    startBtn.disabled = false;
+    vmUrl.value = "";
   };
-  vmUrl.oninput=()=>{
-    const u=vmUrl.value.trim();
-    if(u){vmSource={url:u};startBtn.disabled=false;vmFile.value="";}
-    else{vmSource=null;startBtn.disabled=true;}
+  vmUrl.oninput = () => {
+    const u = vmUrl.value.trim();
+    if (u) {
+      vmSource       = { url: u, async: true };
+      startBtn.disabled = false;
+      vmFile.value   = "";
+    } else {
+      vmSource       = null;
+      startBtn.disabled = true;
+    }
   };
 
 vmUrl.onchange = async () => {
@@ -339,7 +339,7 @@ vmUrl.onchange = async () => {
     fb.textContent="";
     overlay.style.display="flex";
     prog.style.width="0%";
-    const hda=vmSource.buffer?{buffer:vmSource.buffer}:{url:vmSource.url,async:true};
+    const hda = { url: vmSource.url, async: true };
     const bootOptions = document.getElementById("boot-options").value.trim();
     emulator=new V86({
       wasm_path:V86_WASM,
