@@ -14,6 +14,12 @@ header input[type="file"], header input[type="text"] { margin-right:.5rem; backg
 #menu-btn, #vk-toggle { background:none; border:none; color:#eee; font-size:1.5rem; cursor:pointer; margin-right:1rem; }
 #start-btn, #stop-btn { padding:.4rem 1rem; background:#222; border:1px solid #555; border-radius:4px; color:#888; cursor:not-allowed; }
 #start-btn:enabled, #stop-btn:enabled { color:#eee; cursor:pointer; }
+#start-btn:disabled,
+#stop-btn:disabled {
+  /* déjà : color: #888; cursor: not-allowed; */
+  pointer-events: none;
+  opacity: 0.5; /* (optionnel) */
+}
 nav { position:fixed; top:0; bottom:0; left:0; width:16rem; background:#111; display:flex; flex-direction:column; gap:.5rem; padding:0; transform:translateX(-100%); transition:transform .2s ease; z-index:150; }
 nav.visible { transform:translateX(0); }
 .menu-header { display:flex; align-items:center; justify-content:space-between; background:#222; padding:.5rem 1rem; border-bottom:1px solid #333; }
@@ -102,6 +108,11 @@ window.addEventListener("DOMContentLoaded",async()=>{
   const vmFile=document.getElementById("vm-file");
   const vmUrl=document.getElementById("vm-url");
   const startBtn=document.getElementById("start-btn");
+  startBtn.addEventListener("mousedown", () => {
+    if (!startBtn.disabled) {
+      startBtn.disabled = true;
+    }
+  });
   const stopBtn=document.getElementById("stop-btn");
   const fb=document.getElementById("fallback");
 
@@ -134,6 +145,7 @@ if (fb.children.length === 0) {
   let usbBuf=null;
   let shiftDown=false;
   let capsLock=false;
+  let readyToStart = false;
   function log(m){fb.textContent+=(fb.textContent?"\n":"")+m;fb.scrollTop=fb.scrollHeight;}
   const toast = document.getElementById("toast");
   function showToast(message = "Success", duration = 3000) {
@@ -257,7 +269,7 @@ if (b.classList.contains("vk-key")) {
         return;
     }
     vmSource = { url: URL.createObjectURL(f), async: true };
-    startBtn.disabled = false;
+    readyToStart = true;
     vmUrl.value = "";
   };
   vmUrl.oninput = () => {
@@ -275,7 +287,6 @@ if (b.classList.contains("vk-key")) {
 vmUrl.onchange = async () => {
   const raw = vmUrl.value.trim();
 
-  // 1. URL non vide ?
   if (!raw) {
     vmSource = null;
     startBtn.disabled = true;
@@ -293,7 +304,6 @@ vmUrl.onchange = async () => {
     return;
   }
 
-  // 2. Même origine => OK direct
   if (parsed.origin === window.location.origin) {
     vmSource = { url: parsed.toString(), async: true };
     startBtn.disabled = false;
@@ -301,20 +311,19 @@ vmUrl.onchange = async () => {
     return;
   }
 
-  // 3. Origine différente => test fetch HEAD
   try {
     const response = await fetch(parsed.toString(), { method: "HEAD" });
     if (!response.ok) {
       throw new Error("HTTP " + response.status);
     }
-    // Optionnel : vérifier presence de Access-Control-Allow-Origin dans les headers
+    // Optionnal
     const acao = response.headers.get("access-control-allow-origin");
     if (!acao || (acao !== "*" && !acao.includes(window.location.origin))) {
       throw new Error("CORS non autorisé");
     }
-    // Tout est bon
+    // All good
     vmSource = { url: parsed.toString(), async: true };
-    startBtn.disabled = false;
+    readyToStart = true;
     vmFile.value = "";
   } catch (err) {
     console.warn("Validation CORS échouée :", err);
@@ -363,6 +372,11 @@ vmUrl.onchange = async () => {
     });
     stopBtn.disabled=false;
     emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";});
+    emulator.add_listener("download-progress", e => {
+      if (e.loaded === e.total) {
+        allResourcesLoaded();
+      }
+    });
     emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";dlHda.disabled=true;log("🎉 VM ready");});
     emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;dlHda.disabled=true;});
     emulator.add_listener("emulator-stopped",()=>{stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";dlHda.disabled=false;emulator=null;showToast("Updated image ready to be downloaded");log("💤 VM stopped.\nWaiting for your actions…");});
@@ -384,6 +398,12 @@ vmUrl.onchange = async () => {
   };
   log("⏳ Waiting for your actions…");
 });
+function allResourcesLoaded() {
+  // ici, on sait que WASM, BIOS, VGA-BIOS sont là
+  if (readyToStart) {
+    startBtn.disabled = false;
+  }
+}
 const tutorialBtn = document.getElementById("tutorial-btn");
 const tutorialPopup = document.getElementById("tutorial-popup");
 const closeTutorial = document.getElementById("close-tutorial");
