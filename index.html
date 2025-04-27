@@ -67,10 +67,10 @@ nav input { display:none; }
   <div id="virtual-keyboard"></div>
 </div>
 <script>
-const V86_SCRIPT='./build/libv86.js';
-const V86_WASM='./build/v86.wasm';
-const V86_SEABIOS='./bios/seabios.bin';
-const V86_VGABIOS='./bios/vgabios.bin';
+const V86_SCRIPT='./libv86.js';
+const V86_WASM='./v86.wasm';
+const V86_SEABIOS='./seabios.bin';
+const V86_VGABIOS='./vgabios.bin';
 function loadScript(src){return new Promise((r,j)=>{const s=document.createElement("script");s.src=src;s.onload=r;s.onerror=j;document.head.append(s);});}
 window.addEventListener("DOMContentLoaded",async()=>{
   await loadScript(V86_SCRIPT);
