@@ -254,7 +254,13 @@ if (b.classList.contains("vk-key")) {
         return;
     }
     const r=new FileReader();
-    r.onload=()=>{vmSource={buffer:r.result};startBtn.disabled=false;vmUrl.value="";};
+    r.onload = () => {
+        vmSource = { buffer: r.result };
+        setTimeout(() => { 
+            startBtn.disabled = false;
+        }, 0);
+        vmUrl.value = "";
+    };
     r.readAsArrayBuffer(f);
   };
   vmUrl.oninput=()=>{
