@@ -58,6 +58,7 @@ nav input { display:none; }
     <label for="load-usb">Load USB Image</label>
     <input type="file" id="load-usb" accept=".img">
     <button id="download-usb-btn" disabled>Download USB Image</button>
+    <button id="download-hda-btn" disabled>Download Updated Image</button>
     <button id="tutorial-btn">📖 Tutorial</button>
   </nav>
   <div id="screen_container">
@@ -85,6 +86,7 @@ nav input { display:none; }
     <button id="close-tutorial" style="margin-top:2rem; padding:0.5rem 1rem; background:#333; border:1px solid #555; border-radius:4px; color:#eee; font-size:1rem; cursor:pointer;">Close</button>
   </div>
 </div>
+<div id="toast" style="position:fixed; bottom:1rem; left:50%; transform:translateX(-50%); background:#333; color:#0f0; padding:.7rem 1.2rem; border-radius:8px; font-family:monospace; font-size:1rem; display:none; z-index:999;">✅ Image prête à télécharger</div>
 <script>
 const V86_SCRIPT='./libv86.js';
 const V86_WASM='./v86.wasm';
@@ -116,6 +118,7 @@ if (fb.children.length === 0) {
 }
   const loadUsb=document.getElementById("load-usb");
   const dlUsb=document.getElementById("download-usb-btn");
+  const dlHda=document.getElementById("download-hda-btn");
   const overlay=document.getElementById("loading-overlay");
   const prog=document.getElementById("progress");
   const menuBtn=document.getElementById("menu-btn");
@@ -129,6 +132,14 @@ if (fb.children.length === 0) {
   let shiftDown=false;
   let capsLock=false;
   function log(m){fb.textContent+=(fb.textContent?"\n":"")+m;fb.scrollTop=fb.scrollHeight;}
+  const toast = document.getElementById("toast");
+  function showToast(message = "Success", duration = 3000) {
+    toast.textContent = "✅ " + message;
+    toast.style.display = "block";
+    setTimeout(() => {
+      toast.style.display = "none";
+    }, duration);
+  }
   menuBtn.onclick=()=>menu.classList.toggle("visible");
   closeBtn.onclick=()=>menu.classList.remove("visible");
   document.onclick=e=>{if(!menu.contains(e.target)&&e.target!==menuBtn)menu.classList.remove("visible");};
@@ -342,14 +353,25 @@ vmUrl.onchange = async () => {
     });
     stopBtn.disabled=false;
     emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";});
-    emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";log("🎉 VM ready");});
-    emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;});
-    emulator.add_listener("emulator-stopped",()=>{stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";emulator=null;log("💤 VM stopped.\nWaiting for your actions…");});
+    emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";dlHda.disabled=true;log("🎉 VM ready");});
+    emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;dlHda.disabled=true;});
+    emulator.add_listener("emulator-stopped",()=>{stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";dlHda.disabled=false;emulator=null;showToast("Updated image ready to be downloaded");log("💤 VM stopped.\nWaiting for your actions…");});
   };
   stopBtn.onclick=()=>{
-    if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";fb.textContent="";}
+    if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;dlHda.disabled=false;overlay.style.display="none";fb.textContent="";}
   };
   dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
+  dlHda.onclick = () => {
+    if (!emulator?.disk_images?.hda) return;
+    const img = emulator.disk_images.hda;
+    img.get_buffer(b => {
+      const blob = new Blob([b], { type: "application/octet-stream" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "hda-updated.img";
+      a.click();
+    });
+  };
   log("⏳ Waiting for your actions…");
 });
 const tutorialBtn = document.getElementById("tutorial-btn");
