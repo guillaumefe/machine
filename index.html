@@ -35,6 +35,7 @@ nav input { display:none; }
 .vk-key.active { background:#555; font-weight:bold; }
 .vk-key.pressed { background:#666; box-shadow:inset 0 0 5px #000; }
 </style>
+<script src="./libv86.js"></script>
 </head>
 <body>
 <header>
@@ -92,7 +93,6 @@ const V86_SCRIPT='./libv86.js';
 const V86_WASM='./v86.wasm';
 const V86_SEABIOS='./seabios.bin';
 const V86_VGABIOS='./vgabios.bin';
-function loadScript(src){return new Promise((r,j)=>{const s=document.createElement("script");s.src=src;s.onload=r;s.onerror=j;document.head.append(s);});}
 window.addEventListener("DOMContentLoaded",async()=>{
   const MAX_FILE = 2 * 1024 * 1024 * 1024;
   const vmFile=document.getElementById("vm-file");
@@ -377,7 +377,6 @@ vmUrl.onchange = async () => {
       a.click();
     });
   };
-  await loadScript(V86_SCRIPT);
   log("⏳ Waiting for your actions…");
 });
 const tutorialBtn = document.getElementById("tutorial-btn");
