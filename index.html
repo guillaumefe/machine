@@ -1,38 +1,334 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VM Debian avec v86</title>
-    <!-- Import de la librairie v86 depuis un CDN fiable -->
-    <script src="https://unpkg.com/v86@latest/build/libv86.js"></script>
-    <style>
-        body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #screen_container { display: flex; flex-direction: column; align-items: center; }
-        #screen { border: 2px solid #444; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>v86 VM with Virtual USB & Local VM</title>
+<style>
+:root { color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin:0; padding:0; width:100%; height:100%; background:#000; color:#eee; font-family:monospace; overflow:hidden; }
+header { display:flex; align-items:center; justify-content:space-between; background:#111; padding:.5rem 1rem; z-index:200; }
+header > div:first-child { display:flex; align-items:center; }
+header input[type="file"], header input[type="text"] { margin-right:.5rem; background:#111; color:#eee; border:1px solid #555; padding:.3rem; border-radius:4px; }
+#menu-btn, #vk-toggle { background:none; border:none; color:#eee; font-size:1.5rem; cursor:pointer; margin-right:1rem; }
+#start-btn, #stop-btn { padding:.4rem 1rem; background:#222; border:1px solid #555; border-radius:4px; color:#888; cursor:not-allowed; }
+#start-btn:enabled, #stop-btn:enabled { color:#eee; cursor:pointer; }
+nav { position:fixed; top:0; bottom:0; left:0; width:16rem; background:#111; display:flex; flex-direction:column; gap:.5rem; padding:0; transform:translateX(-100%); transition:transform .2s ease; z-index:150; }
+nav.visible { transform:translateX(0); }
+.menu-header { display:flex; align-items:center; justify-content:space-between; background:#222; padding:.5rem 1rem; border-bottom:1px solid #333; }
+.menu-header h2 { margin:0; font-size:1rem; }
+.menu-header button { background:none; border:none; color:#eee; font-size:1.2rem; cursor:pointer; }
+nav label, nav button { background:#222; border:1px solid #555; border-radius:4px; color:#eee; padding:.5rem; cursor:pointer; width:calc(100% - 2rem); margin:.25rem 1rem; text-align:left; }
+nav input { display:none; }
+#main { display:flex; flex-direction:column; height:calc(100% - 2.5rem); position:relative; }
+#screen_container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem; overflow:hidden; position:relative; }
+#screen { border:2px solid #444; max-width:100%; height:auto; }
+#fallback { width:100%; max-width:800px; min-height:4rem; background:#111; border:1px solid #333; padding:.5rem; overflow:auto; white-space:pre-wrap; font-size:.85rem; color:#0f0; }
+#loading-overlay { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:400; color:#0f0; font-size:1.2rem; }
+#progress-bar { width:80%; height:1rem; background:#333; border:1px solid #555; margin-top:1rem; border-radius:5px; overflow:hidden; }
+#progress { width:0%; height:100%; background:limegreen; transition:width .3s ease; }
+#virtual-keyboard { display:none; position:fixed; bottom:0; left:50%; transform:translateX(-50%); background:#222; padding:.5rem; box-shadow:0 -2px 5px rgba(0,0,0,0.5); border-radius:8px; max-width:95%; overflow:auto; z-index:300; }
+#virtual-keyboard.active { display:flex; flex-direction:column; }
+.vk-row { display:flex; justify-content:center; margin:2px 0; }
+.vk-key { margin:2px; min-width:2.5rem; height:2.5rem; background:#333; border:1px solid #555; border-radius:4px; color:#eee; font-size:.85rem; text-align:center; line-height:2.5rem; cursor:pointer; user-select:none; }
+.vk-key.active { background:#555; font-weight:bold; }
+.vk-key.pressed { background:#666; box-shadow:inset 0 0 5px #000; }
+</style>
 </head>
 <body>
-    <div id="screen_container">
-        <!-- Console fallback -->
-        <div style="white-space: pre; font: 14px monospace; line-height: 14px; color: #0f0;"></div>
-        <!-- Canvas for VM display -->
-        <canvas id="screen" width="800" height="600"></canvas>
+<header>
+  <div>
+    <input type="file" id="vm-file" accept=".img,.iso">
+    <input type="text" id="vm-url" placeholder="http://127.0.0.1/disk.img">
+    <button id="menu-btn">☰</button>
+    <button id="vk-toggle">⌨️</button>
+  </div>
+  <div>
+    <button id="start-btn" disabled>Start</button>
+    <button id="stop-btn" disabled>Stop</button>
+  </div>
+</header>
+<div id="main">
+  <nav id="menu">
+    <div class="menu-header">
+      <h2>Menu</h2><button id="close-btn">×</button>
     </div>
+    <label for="load-usb">Load USB Image</label>
+    <input type="file" id="load-usb" accept=".img">
+    <button id="download-disk-btn">Download VM Image</button>
+    <button id="download-usb-btn" disabled>Download USB Image</button>
+  </nav>
+  <div id="screen_container">
+    <div id="fallback"></div>
+    <canvas id="screen" width="800" height="600"></canvas>
+    <div id="loading-overlay">Loading VM…<div id="progress-bar"><div id="progress"></div></div></div>
+  </div>
+  <div id="virtual-keyboard"></div>
+</div>
+<script>
+const V86_SCRIPT='./build/libv86.js';
+const V86_WASM='./build/v86.wasm';
+const V86_SEABIOS='./bios/seabios.bin';
+const V86_VGABIOS='./bios/vgabios.bin';
+function loadScript(src){return new Promise((r,j)=>{const s=document.createElement("script");s.src=src;s.onload=r;s.onerror=j;document.head.append(s);});}
+window.addEventListener("DOMContentLoaded",async()=>{
+  await loadScript(V86_SCRIPT);
+  const MAX_FILE=512*1024*1024;
+  const vmFile=document.getElementById("vm-file");
+  const vmUrl=document.getElementById("vm-url");
+  const startBtn=document.getElementById("start-btn");
+  const stopBtn=document.getElementById("stop-btn");
+  const fb=document.getElementById("fallback");
 
-    <script>
-        // Instanciation de l'émulateur v86 pour Debian Live XFCE
-        var emulator = new V86({
-            wasm_path: "https://unpkg.com/v86@latest/build/v86.wasm",
-            memory_size: 512 * 1024 * 1024,  // 512 Mo de RAM
-            vga_memory_size: 2 * 1024 * 1024, // 2 Mo de VRAM
-            screen_container: document.getElementById("screen_container"),
-            bios: { url: "https://raw.githubusercontent.com/copy/v86/master/bios/seabios.bin" },
-            vga_bios: { url: "https://raw.githubusercontent.com/copy/v86/master/bios/vgabios.bin" },
-            cdrom: { url: "https://raw.githubusercontent.com/copy/images/master/linux.iso" },
-            autostart: true,
-            screen: { canvas: document.getElementById("screen") }
-        });
-    </script>
+const style = window.getComputedStyle(fb);
+const lh    = parseFloat(style.lineHeight);
+const rows  = 25;
+fb.style.height = `${rows * lh}px`;
+fb.style.overflowY = "auto";
+fb.innerHTML = "";  // on vide au cas où
+  for (let i = 0; i < rows; i++) {
+    fb.appendChild(document.createElement("div"));
+}
+if (fb.children.length === 0) {
+    for (let i = 0; i < rows; i++) {
+        fb.appendChild(document.createElement("div"));
+    }
+}
+  const loadUsb=document.getElementById("load-usb");
+  const dlVm=document.getElementById("download-disk-btn");
+  const dlUsb=document.getElementById("download-usb-btn");
+  const overlay=document.getElementById("loading-overlay");
+  const prog=document.getElementById("progress");
+  const menuBtn=document.getElementById("menu-btn");
+  const closeBtn=document.getElementById("close-btn");
+  const menu=document.getElementById("menu");
+  const vkToggle=document.getElementById("vk-toggle");
+  const vk=document.getElementById("virtual-keyboard");
+  let emulator=null;
+  let vmSource=null;
+  let usbBuf=null;
+  let shiftDown=false;
+  let capsLock=false;
+  function log(m){fb.textContent+=(fb.textContent?"\n":"")+m;fb.scrollTop=fb.scrollHeight;}
+  menuBtn.onclick=()=>menu.classList.toggle("visible");
+  closeBtn.onclick=()=>menu.classList.remove("visible");
+  document.onclick=e=>{if(!menu.contains(e.target)&&e.target!==menuBtn)menu.classList.remove("visible");};
+  vkToggle.onclick=()=>vk.classList.toggle("active");
+  const keyLayout=[
+    [{mk:41,bk:169,n:"`",s:"~"},{mk:2,bk:130,n:"1",s:"!"},{mk:3,bk:131,n:"2",s:"@"},{mk:4,bk:132,n:"3",s:"#"},{mk:5,bk:133,n:"4",s:"$"},{mk:6,bk:134,n:"5",s:"%"},{mk:7,bk:135,n:"6",s:"^"},{mk:8,bk:136,n:"7",s:"&"},{mk:9,bk:137,n:"8",s:"*"},{mk:10,bk:138,n:"9",s:"("},{mk:11,bk:139,n:"0",s:")"},{mk:12,bk:140,n:"-",s:"_"},{mk:13,bk:141,n:"=",s:"+"},{mk:14,bk:142,n:"←"}],
+    [{mk:15,bk:143,n:"Tab"},{mk:16,bk:144,n:"q",s:"Q"},{mk:17,bk:145,n:"w",s:"W"},{mk:18,bk:146,n:"e",s:"E"},{mk:19,bk:147,n:"r",s:"R"},{mk:20,bk:148,n:"t",s:"T"},{mk:21,bk:149,n:"y",s:"Y"},{mk:22,bk:150,n:"u",s:"U"},{mk:23,bk:151,n:"i",s:"I"},{mk:24,bk:152,n:"o",s:"O"},{mk:25,bk:153,n:"p",s:"P"},{mk:26,bk:154,n:"[",s:"{"},{mk:27,bk:155,n:"]",s:"}"},{mk:43,bk:171,n:"\\",s:"|"}],
+    [{mk:58,bk:186,n:"Caps"},{mk:30,bk:158,n:"a",s:"A"},{mk:31,bk:159,n:"s",s:"S"},{mk:32,bk:160,n:"d",s:"D"},{mk:33,bk:161,n:"f",s:"F"},{mk:34,bk:162,n:"g",s:"G"},{mk:35,bk:163,n:"h",s:"H"},{mk:36,bk:164,n:"j",s:"J"},{mk:37,bk:165,n:"k",s:"K"},{mk:38,bk:166,n:"l",s:"L"},{mk:39,bk:167,n:";",s:":"},{mk:40,bk:168,n:"'",s:'"'}],
+    [{mk:42,bk:170,n:"Shift"},{mk:44,bk:172,n:"z",s:"Z"},{mk:45,bk:173,n:"x",s:"X"},{mk:46,bk:174,n:"c",s:"C"},{mk:47,bk:175,n:"v",s:"V"},{mk:48,bk:176,n:"b",s:"B"},{mk:49,bk:177,n:"n",s:"N"},{mk:50,bk:178,n:"m",s:"M"},{mk:51,bk:179,n:",",s:"<"},{mk:52,bk:180,n:".",s:">"},{mk:53,bk:181,n:"/",s:"?"},{mk:54,bk:182,n:"Shift"}],
+    [{mk:29,bk:157,n:"Ctrl"},{mk:56,bk:184,n:"Alt"},{mk:57,bk:185,n:"␣"}]
+  ];
+  function updateVK(){
+    vk.querySelectorAll(".vk-key").forEach(b=>{
+      const n=b.dataset.n;
+      const s=b.dataset.s;
+      b.classList.toggle("active",n==="Caps"?capsLock:(n==="Shift"&&shiftDown));
+      let lbl=n;
+      if(s){
+        if(n.length===1&&/[a-z]/i.test(n))lbl=(capsLock^shiftDown)?n.toUpperCase():n.toLowerCase();
+        else lbl=(shiftDown||capsLock)?s:n;
+      }
+      b.textContent=lbl;
+    });
+  }
+  keyLayout.forEach(row=>{
+    const r=document.createElement("div");
+    r.className="vk-row";
+    row.forEach(k=>{
+      const b=document.createElement("div");
+      b.className="vk-key";
+      b.dataset.make=k.mk;
+      b.dataset.break=k.bk;
+      b.dataset.n=k.n;
+      if(k.s)b.dataset.s=k.s;
+      r.appendChild(b);
+    });
+    vk.appendChild(r);
+  });
+  updateVK();
+  document.addEventListener("keydown",e=>{
+    if(!vk.classList.contains("active"))return;
+    const map={"Backquote":41,"Digit1":2,"Digit2":3,"Digit3":4,"Digit4":5,"Digit5":6,"Digit6":7,"Digit7":8,"Digit8":9,"Digit9":10,"Digit0":11,"Minus":12,"Equal":13,"Backspace":14,"Tab":15,"KeyQ":16,"KeyW":17,"KeyE":18,"KeyR":19,"KeyT":20,"KeyY":21,"KeyU":22,"KeyI":23,"KeyO":24,"KeyP":25,"BracketLeft":26,"BracketRight":27,"Enter":28,"ControlLeft":29,"KeyA":30,"KeyS":31,"KeyD":32,"KeyF":33,"KeyG":34,"KeyH":35,"KeyJ":36,"KeyK":37,"KeyL":38,"Semicolon":39,"Quote":40,"ShiftLeft":42,"Backslash":43,"KeyZ":44,"KeyX":45,"KeyC":46,"KeyV":47,"KeyB":48,"KeyN":49,"KeyM":50,"Comma":51,"Period":52,"Slash":53,"ShiftRight":54,"AltLeft":56,"Space":57,"CapsLock":58};
+    const sc=map[e.code];
+    if(!sc)return;
+    const b=vk.querySelector(`.vk-key[data-make="${sc}"]`);
+    if(b)b.classList.add("pressed");
+  });
+  document.addEventListener("keyup",e=>{
+    if(!vk.classList.contains("active"))return;
+    const map={"Backquote":41,"Digit1":2,"Digit2":3,"Digit3":4,"Digit4":5,"Digit5":6,"Digit6":7,"Digit7":8,"Digit8":9,"Digit9":10,"Digit0":11,"Minus":12,"Equal":13,"Backspace":14,"Tab":15,"KeyQ":16,"KeyW":17,"KeyE":18,"KeyR":19,"KeyT":20,"KeyY":21,"KeyU":22,"KeyI":23,"KeyO":24,"KeyP":25,"BracketLeft":26,"BracketRight":27,"Enter":28,"ControlLeft":29,"KeyA":30,"KeyS":31,"KeyD":32,"KeyF":33,"KeyG":34,"KeyH":35,"KeyJ":36,"KeyK":37,"KeyL":38,"Semicolon":39,"Quote":40,"ShiftLeft":42,"Backslash":43,"KeyZ":44,"KeyX":45,"KeyC":46,"KeyV":47,"KeyB":48,"KeyN":49,"KeyM":50,"Comma":51,"Period":52,"Slash":53,"ShiftRight":54,"AltLeft":56,"Space":57,"CapsLock":58};
+    const sc=map[e.code];
+    if(!sc)return;
+    const b=vk.querySelector(`.vk-key[data-make="${sc}"]`);
+    if(b)b.classList.remove("pressed");
+  });
+  vk.addEventListener("mousedown",e=>{
+    const b=e.target;
+    if(!b.classList.contains("vk-key"))return;
+    const mk=+b.dataset.make;
+    const bk=+b.dataset.break;
+    const n=b.dataset.n;
+    if(n==="Shift"){
+      if(capsLock){
+        emulator&&emulator.keyboard_send_scancodes([58,186]);
+        capsLock=false;
+      }
+      if(shiftDown){
+        emulator&&emulator.keyboard_send_scancodes([shiftBreak]);
+        shiftDown=false;
+        updateVK();
+      } else {
+        shiftDown=true;
+        shiftMake=mk;
+        shiftBreak=bk;
+        updateVK();
+        emulator&&emulator.keyboard_send_scancodes([mk,bk]);
+      }
+      return;
+    }
+    if(n==="Caps"){
+      if(shiftDown){
+        emulator&&emulator.keyboard_send_scancodes([shiftBreak]);
+        shiftDown=false;
+      }
+      emulator&&emulator.keyboard_send_scancodes([mk,bk]);
+      capsLock=!capsLock;
+      updateVK();
+      return;
+    }
+    updateVK();
+    emulator&&emulator.keyboard_send_scancodes([mk,bk]);
+    if(shiftDown){
+      emulator&&emulator.keyboard_send_scancodes([shiftBreak]);
+      shiftDown=false;
+      updateVK();
+    }
+
+if (b.classList.contains("vk-key")) {
+  b.classList.add("pressed");
+  setTimeout(() => {
+    b.classList.remove("pressed");
+  }, 150); // 150 ms suffit pour un effet de "flash"
+}
+
+  });
+  vmFile.onchange=e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    if(f.size>MAX_FILE){e.target.value="";return;}
+    const r=new FileReader();
+    r.onload=()=>{vmSource={buffer:r.result};startBtn.disabled=false;vmUrl.value="";};
+    r.readAsArrayBuffer(f);
+  };
+  vmUrl.oninput=()=>{
+    const u=vmUrl.value.trim();
+    if(u){vmSource={url:u};startBtn.disabled=false;vmFile.value="";}
+    else{vmSource=null;startBtn.disabled=true;}
+  };
+
+vmUrl.onchange = async () => {
+  const raw = vmUrl.value.trim();
+
+  // 1. URL non vide ?
+  if (!raw) {
+    vmSource = null;
+    startBtn.disabled = true;
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(raw, window.location.href);
+  } catch (e) {
+    alert("URL invalide – veuillez vérifier la saisie.");
+    vmUrl.value = "";
+    vmSource = null;
+    startBtn.disabled = true;
+    return;
+  }
+
+  // 2. Même origine => OK direct
+  if (parsed.origin === window.location.origin) {
+    vmSource = { url: parsed.toString(), async: true };
+    startBtn.disabled = false;
+    vmFile.value = "";
+    return;
+  }
+
+  // 3. Origine différente => test fetch HEAD
+  try {
+    const response = await fetch(parsed.toString(), { method: "HEAD" });
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    // Optionnel : vérifier presence de Access-Control-Allow-Origin dans les headers
+    const acao = response.headers.get("access-control-allow-origin");
+    if (!acao || (acao !== "*" && !acao.includes(window.location.origin))) {
+      throw new Error("CORS non autorisé");
+    }
+    // Tout est bon
+    vmSource = { url: parsed.toString(), async: true };
+    startBtn.disabled = false;
+    vmFile.value = "";
+  } catch (err) {
+    console.warn("Validation CORS échouée :", err);
+    alert("Impossible de charger cette URL (CORS non autorisé).\nVeuillez fournir une URL locale (même origine).");
+    vmUrl.value = "";
+    vmSource = null;
+    startBtn.disabled = true;
+  }
+};
+
+  loadUsb.onchange=e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    if(f.size>MAX_FILE){e.target.value="";return;}
+    const r=new FileReader();
+    r.onload=()=>{usbBuf=r.result;dlUsb.disabled=false;};
+    r.readAsArrayBuffer(f);
+  };
+  startBtn.onclick=()=>{
+    if(!vmSource)return;
+    if(emulator){emulator.stop();emulator.destroy();emulator=null;}
+  let needed = 128 * 1024 * 1024;
+  if (vmSource.buffer) {
+    needed = vmSource.buffer.byteLength + 32 * 1024 * 1024;
+  }
+    startBtn.disabled=true;
+    fb.textContent="";
+    overlay.style.display="flex";
+    prog.style.width="0%";
+    const hda=vmSource.buffer?{buffer:vmSource.buffer}:{url:vmSource.url,async:true};
+    emulator=new V86({
+      wasm_path:V86_WASM,
+      bios:{url:V86_SEABIOS},
+      vga_bios:{url:V86_VGABIOS},
+      memory_size: needed,
+      vga_memory_size:16*1024*1024,
+      hda,
+      ...(usbBuf&&{hdb:{buffer:usbBuf,size:usbBuf.byteLength}}),
+      serial_container: fb || document.createElement("div"),
+      screen_container:document.getElementById("screen_container"),
+      screen:{canvas:document.getElementById("screen")},
+      autostart:true
+    });
+    stopBtn.disabled=false;
+    emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";});
+    emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";log("🎉 VM ready");});
+    emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;});
+    emulator.add_listener("emulator-stopped",()=>{stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";emulator=null;log("💤 VM stopped.\nWaiting for your actions…");});
+  };
+  stopBtn.onclick=()=>{
+    if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";fb.textContent="";}
+  };
+  dlVm.onclick=()=>{if(!emulator?.disk_images?.hda)return;const img=emulator.disk_images.hda;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="vm.img";a.click();});};
+  dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
+  log("⏳ Waiting for your actions…");
+});
+</script>
 </body>
 </html>
