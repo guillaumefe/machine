@@ -136,6 +136,7 @@ if (fb.children.length === 0) {
   const vkToggle=document.getElementById("vk-toggle");
   const vk=document.getElementById("virtual-keyboard");
   let emulator=null;
+  let lastHdaImage=null;
   let vmSource=null;
   let usbBuf=null;
   let shiftDown=false;
@@ -369,15 +370,25 @@ vmUrl.onchange = async () => {
     emulator.add_listener("download-progress",e=>{if(e.total&&e.loaded)prog.style.width=Math.floor(e.loaded/e.total*100)+"%";}if (e.loaded === e.total) {allResourcesLoaded();});
     emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";dlHda.disabled=true;log("🎉 VM ready");});
     emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;dlHda.disabled=true;});
-    emulator.add_listener("emulator-stopped",()=>{stopBtn.disabled=true;startBtn.disabled=false;overlay.style.display="none";dlHda.disabled=false;emulator=null;showToast("Updated image ready to be downloaded");log("💤 VM stopped.\nWaiting for your actions…");});
+    emulator.add_listener("emulator-stopped", () => {
+     stopBtn.disabled    = true;
+     startBtn.disabled   = false;
+     overlay.style.display= "none";
+     lastHdaImage        = emulator.disk_images.hda;
+     dlHda.disabled      = false;
+     emulator.destroy();
+     emulator = null;
+     showToast("Updated image ready to be downloaded");
+     log("💤 VM stopped.\nWaiting for your actions…");
+    });
   };
   stopBtn.onclick=()=>{
     if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;dlHda.disabled=false;overlay.style.display="none";fb.textContent="";}
   };
   dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
   dlHda.onclick = () => {
-    if (!emulator?.disk_images?.hda) return;
-    const img = emulator.disk_images.hda;
+    const img = emulator?.disk_images?.hda || lastHdaImage;
+    if (!img) return;
     img.get_buffer(b => {
       const blob = new Blob([b], { type: "application/octet-stream" });
       const a = document.createElement("a");
