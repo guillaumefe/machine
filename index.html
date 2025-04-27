@@ -364,7 +364,7 @@ function getKeyInfo(e) {
   return null;
 }
 
-  document.addEventListener("keydown", e => {
+document.addEventListener("keydown", e => {
   if (e.repeat) return;
   const info = getKeyInfo(e);
   if (!info) return;
