@@ -353,7 +353,10 @@ vmUrl.onchange = async () => {
     needed = vmSource.buffer.byteLength + 32 * 1024 * 1024;
   }
     startBtn.disabled=true;
-    fb.textContent="";
+    fb.innerHTML = "";
+    for (let i = 0; i < rows; i++) {
+      fb.appendChild(document.createElement("div"));
+    }
     overlay.style.display="flex";
     prog.style.width="0%";
     const hda = { url: vmSource.url, async: true };
