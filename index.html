@@ -313,56 +313,69 @@ const codeToScancodes = {
   updateVK();
 
 const flatLayout = keyLayout.flat();
-const charMap = {};
-flatLayout.forEach(k => {
-  // k.n = label sans Shift (ex: "a", "1", "`", ...)
-  charMap[k.n] = { make: k.mk, break: k.bk, needShift: false };
-  // k.s = label avec Shift (ex: "A", "!", "~", ...)
-  if (k.s) {
-    charMap[k.s] = { make: k.mk, break: k.bk, needShift: true };
+const qwertyByCode = {};
+for (const [code, [mk, bk]] of Object.entries(codeToScancodes)) {
+  const entry = flatLayout.find(k => k.mk === mk);
+  if (entry) {
+    qwertyByCode[code] = entry;
   }
-});
+}
 
 const SHIFT_MK    = codeToScancodes.ShiftLeft[0];
 const SHIFT_BK    = codeToScancodes.ShiftLeft[1];
 const autoShifted = new Set();
 
 function getKeyInfo(e) {
-  const info = charMap[e.key];
-  if (info) return info;
-  const sc = codeToScancodes[e.code];
-  if (sc) {
-    return { make: sc[0], break: sc[1], needShift: false };
-  }
-
-  return null;
+  const entry = qwertyByCode[e.code];
+  if (!entry) return null;
+  const needShift = e.getModifierState("Shift");
+  return {
+    make: entry.mk,
+    break: entry.bk,
+    needShift
+  };
 }
 
 document.addEventListener("keydown", e => {
   if (e.repeat) return;
-  const sc = codeToScancodes[e.code];
-  if (!sc) return;
+  const info = getKeyInfo(e);
+  if (!info) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  // envoi du make
-  emulator.keyboard_send_scancodes([sc[0]]);
+
+  // simuler Shift si nécessaire
+  if (info.needShift && !e.getModifierState("Shift")) {
+    emulator.keyboard_send_scancodes([SHIFT_MK]);
+    autoShifted.add(SHIFT_MK);
+  }
+
+  // touche QWERTY "make"
+  emulator.keyboard_send_scancodes([info.make]);
+
   // visuel
-  const btn = vk.querySelector(`.vk-key[data-make="${sc[0]}"]`);
+  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
 
 document.addEventListener("keyup", e => {
-  const sc = codeToScancodes[e.code];
-  if (!sc) return;
+  const info = getKeyInfo(e);
+  if (!info) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  // envoi du break
-  emulator.keyboard_send_scancodes([sc[1]]);
-  // visuel
-  const btn = vk.querySelector(`.vk-key[data-make="${sc[0]}"]`);
+
+  // touche QWERTY "break"
+  emulator.keyboard_send_scancodes([info.break]);
+
+  // relâcher le Shift simulé
+  if (autoShifted.has(SHIFT_MK)) {
+    emulator.keyboard_send_scancodes([SHIFT_BK]);
+    autoShifted.delete(SHIFT_MK);
+  }
+
+  // visuel off
+  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.remove("pressed");
 }, true);
-
 
   vk.addEventListener("mousedown",e=>{
     const b=e.target;
