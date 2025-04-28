@@ -534,7 +534,7 @@ vmUrl.onchange = async () => {
       screen:{canvas:document.getElementById("screen")},
       autostart:true,
       ...(bootOptions && { cmdline: bootOptions }),
-      keyboard: { capture: false }
+      keyboard: { capture: true }
     });
     stopBtn.disabled=false;
     loadUsb.disabled=true;
