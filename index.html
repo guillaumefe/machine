@@ -216,6 +216,72 @@ const keyLayout = [
     { mk: 100, bk: 100, n: "AltGr" }
   ]
 ];
+const codeToScancodes = {
+  Backquote:    [41, 169],
+  Digit1:       [2,  130],
+  Digit2:       [3,  131],
+  Digit3:       [4,  132],
+  Digit4:       [5,  133],
+  Digit5:       [6,  134],
+  Digit6:       [7,  135],
+  Digit7:       [8,  136],
+  Digit8:       [9,  137],
+  Digit9:       [10, 138],
+  Digit0:       [11, 139],
+  Minus:        [12, 140],
+  Equal:        [13, 141],
+  Backspace:    [14, 142],
+  Tab:          [15, 143],
+
+  KeyQ:         [16, 144],
+  KeyW:         [17, 145],
+  KeyE:         [18, 146],
+  KeyR:         [19, 147],
+  KeyT:         [20, 148],
+  KeyY:         [21, 149],
+  KeyU:         [22, 150],
+  KeyI:         [23, 151],
+  KeyO:         [24, 152],
+  KeyP:         [25, 153],
+
+  BracketLeft:  [26, 154],
+  BracketRight: [27, 155],
+  Backslash:    [43, 171],
+
+  Enter:        [28, 156],
+  ControlLeft:  [29, 157],
+  KeyA:         [30, 158],
+  KeyS:         [31, 159],
+  KeyD:         [32, 160],
+  KeyF:         [33, 161],
+  KeyG:         [34, 162],
+  KeyH:         [35, 163],
+  KeyJ:         [36, 164],
+  KeyK:         [37, 165],
+  KeyL:         [38, 166],
+  Semicolon:    [39, 167],
+  Quote:        [40, 168],
+
+  ShiftLeft:    [42, 170],
+  ShiftRight:   [54, 182],
+
+  KeyZ:         [44, 172],
+  KeyX:         [45, 173],
+  KeyC:         [46, 174],
+  KeyV:         [47, 175],
+  KeyB:         [48, 176],
+  KeyN:         [49, 177],
+  KeyM:         [50, 178],
+  Comma:        [51, 179],
+  Period:       [52, 180],
+  Slash:        [53, 181],
+
+  AltLeft:      [56, 184],
+  AltRight:     [100,100],  // AltGr
+
+  Space:        [57, 185],
+  CapsLock:     [58, 186]
+};
 
 const SHIFT_MK = codeToScancodes["ShiftLeft"][0];
 const SHIFT_BK = codeToScancodes["ShiftLeft"][1];
@@ -258,21 +324,9 @@ for (const [code, [mk, bk]] of Object.entries(codeToScancodes)) {
   }
 }
 
-function getKeyInfo(e) {
-  const entry = charMap[e.key];
-  if (entry) return entry;
-
-  const sc = codeToScancodes[e.code];
-  if (sc)  return { make: sc[0], break: sc[1], needShift: false };
-
-  return null;
-}
-
 document.addEventListener("keydown", e => {
   if (!emulator) return;
   if (e.repeat) return;      // ignore les répétitions
-  const info = getKeyInfo(e);
-  if (!info) return;
 
   e.preventDefault();
   e.stopImmediatePropagation();
@@ -295,8 +349,6 @@ document.addEventListener("keydown", e => {
 
 document.addEventListener("keyup", e => {
   if (!emulator) return;
-  const info = getKeyInfo(e);
-  if (!info) return;
 
   e.preventDefault();
   e.stopImmediatePropagation();
