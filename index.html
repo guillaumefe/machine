@@ -326,56 +326,65 @@ const SHIFT_BK    = codeToScancodes.ShiftLeft[1];
 const autoShifted = new Set();
 
 function getKeyInfo(e) {
-  const entry = qwertyByCode[e.code];
-  if (!entry) return null;
-  const needShift = e.getModifierState("Shift");
-  return {
-    make: entry.mk,
-    break: entry.bk,
-    needShift
-  };
+  // Ne jamais retourner de scancode de Shift physiquement
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
+    return null;
+  }
+
+  const entry = charMap[e.key];
+  if (entry) return entry;
+
+  // Seules les touches de contrôle non-imprimables
+  // (Enter, Tab, Backspace…) passent par fallback
+  const sc = codeToScancodes[e.code];
+  if (sc)  return { make: sc[0], break: sc[1], needShift: false };
+
+  return null;
 }
 
 document.addEventListener("keydown", e => {
   if (e.repeat) return;
   const info = getKeyInfo(e);
   if (!info) return;
-  e.preventDefault();
-  e.stopImmediatePropagation();
 
-  // simuler Shift si nécessaire
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Si le caractère requiert Shift mais que l’hôte n’est pas en Shift,
+  // on *simule* un Shift vers la VM.
   if (info.needShift && !e.getModifierState("Shift")) {
     emulator.keyboard_send_scancodes([SHIFT_MK]);
-    autoShifted.add(SHIFT_MK);
+    autoShifted.add(info.make);
   }
 
-  // touche QWERTY "make"
   emulator.keyboard_send_scancodes([info.make]);
 
-  // visuel
   const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
 
 document.addEventListener("keyup", e => {
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
+    // on ignore toujours le relâchement physique du Shift
+    return;
+  }
   const info = getKeyInfo(e);
   if (!info) return;
-  e.preventDefault();
-  e.stopImmediatePropagation();
 
-  // touche QWERTY "break"
+  e.preventDefault();
+  e.stopPropagation();
+
   emulator.keyboard_send_scancodes([info.break]);
 
-  // relâcher le Shift simulé
-  if (autoShifted.has(SHIFT_MK)) {
+  if (info.needShift && autoShifted.has(info.make)) {
     emulator.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.delete(SHIFT_MK);
+    autoShifted.delete(info.make);
   }
 
-  // visuel off
   const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.remove("pressed");
 }, true);
+
 
   vk.addEventListener("mousedown",e=>{
     const b=e.target;
