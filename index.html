@@ -83,7 +83,7 @@ nav input { display:none; }
     <input type="file" id="load-usb" accept=".img">
     <button id="download-usb-btn" disabled>Download USB Image</button>
     <button id="download-hda-btn" disabled>Download Updated Image</button>
-    <button id="toggle-qwerty-btn">Force QWERTY: Off</button>
+    <button id="toggle-qwerty-btn">Agnostic Keyboard Layout: Off</button>
     <button id="tutorial-btn">📖 Tutorial</button>
   </nav>
   <div id="screen_container">
@@ -158,7 +158,7 @@ if (fb.children.length === 0) {
   const toggleQwertyBtn = document.getElementById("toggle-qwerty-btn");
   toggleQwertyBtn.onclick = () => {
     forceQwerty = !forceQwerty;
-    toggleQwertyBtn.textContent = `Force QWERTY: ${forceQwerty ? "On" : "Off"}`;
+    toggleQwertyBtn.textContent = `Agnostic Keyboard Layout: ${forceQwerty ? "On" : "Off"}`;
   };
   let readyToStart = false;
   function allResourcesLoaded() {
