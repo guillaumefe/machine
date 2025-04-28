@@ -116,7 +116,6 @@ const V86_WASM='./v86.wasm';
 const V86_SEABIOS='./seabios.bin';
 const V86_VGABIOS='./vgabios.bin';
 window.addEventListener("DOMContentLoaded",async()=>{
-  const km = await navigator.keyboard.getLayoutMap();
   const MAX_FILE = 2 * 1024 * 1024 * 1024;
   const vmFile=document.getElementById("vm-file");
   const vmUrl=document.getElementById("vm-url");
@@ -283,6 +282,22 @@ const codeToScancodes = {
   CapsLock:     [58, 186]
 };
 
+const SHIFT_MK    = codeToScancodes.ShiftLeft[0];
+const SHIFT_BK    = codeToScancodes.ShiftLeft[1];
+const autoShifted = new Set();
+
+const km = await navigator.keyboard.getLayoutMap();
+// charMap : mappe chaque caractère rendu par e.key → son scancode QWERTY
+const charMap = {};
+for (const [code, label] of km) {
+  const sc = codeToScancodes[code];
+  if (!sc) continue;
+  // besoin de Shift si label est en majuscule ou un caractère de Shift (ex. ":")
+  const needShift = label !== label.toLowerCase();
+  charMap[label] = { make: sc[0], break: sc[1], needShift };
+}
+
+
   function updateVK(){
     vk.querySelectorAll(".vk-key").forEach(b=>{
       const n=b.dataset.n;
@@ -321,28 +336,19 @@ for (const [code, [mk, bk]] of Object.entries(codeToScancodes)) {
   }
 }
 
-const SHIFT_MK    = codeToScancodes.ShiftLeft[0];
-const SHIFT_BK    = codeToScancodes.ShiftLeft[1];
-const autoShifted = new Set();
-
 function getKeyInfo(e) {
-  // d’abord, votre lookup par caractère…
+  // 1) d’abord on regarde dans charMap[e.key] (AZERTY→caractère)
   const entry = charMap[e.key];
   if (entry) return entry;
 
-  // ensuite, fallback par code physique (y compris ShiftLeft/ShiftRight)
+  // 2) sinon fallback sur e.code (les touches de fonction, flèches, etc.)
   const sc = codeToScancodes[e.code];
-  if (sc) {
-    return {
-      make:      sc[0],
-      break:     sc[1],
-      needShift: false    // Shift lui-même n’a pas besoin d’autre Shift
-    };
-  }
+  if (sc)  return { make: sc[0], break: sc[1], needShift: false };
+
   return null;
 }
 
-  document.addEventListener("keydown", e => {
+document.addEventListener("keydown", e => {
   if (e.repeat) return;
   const info = getKeyInfo(e);
   if (!info) return;
@@ -350,16 +356,16 @@ function getKeyInfo(e) {
   e.preventDefault();
   e.stopImmediatePropagation();
 
-  // si needShift (pour un caractère majuscule), on simule avant
+  // si on a besoin de Shift pour ce caractère, on presse ShiftLeft avant
   if (info.needShift && !e.getModifierState("Shift")) {
     emulator.keyboard_send_scancodes([SHIFT_MK]);
     autoShifted.add(info.make);
   }
 
-  // envoie toujours le make de la touche (ShiftLeft/Right compris)
+  // on envoie finalement le scancode de la touche proprement dite
   emulator.keyboard_send_scancodes([info.make]);
 
-  // visuel
+  // feedback visuel
   const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
@@ -371,21 +377,19 @@ document.addEventListener("keyup", e => {
   e.preventDefault();
   e.stopImmediatePropagation();
 
-  // envoie le break
+  // on relâche la touche
   emulator.keyboard_send_scancodes([info.break]);
 
-  // si on avait auto-shifté, on relâche
+  // si on avait auto-shifté, on relâche ShiftLeft
   if (info.needShift && autoShifted.has(info.make)) {
     emulator.keyboard_send_scancodes([SHIFT_BK]);
     autoShifted.delete(info.make);
   }
 
-  // visuel
+  // feedback visuel
   const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.remove("pressed");
 }, true);
-
-
 
   vk.addEventListener("mousedown",e=>{
     const b=e.target;
