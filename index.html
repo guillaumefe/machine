@@ -31,6 +31,12 @@ nav button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
+nav label.disabled {        /* cible les <label class="disabled"> dans <nav> */
+   color: #888;
+   cursor: not-allowed;
+   opacity: 0.5;
+   pointer-events: none;     /* pour désactiver les clics sur le label */
+ }
 nav input { display:none; }
 #main { display:flex; flex-direction:column; height:calc(100% - 2.5rem); position:relative; }
 #screen_container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem; overflow:hidden; position:relative; }
@@ -563,6 +569,8 @@ vmUrl.onchange = async () => {
       keyboard: { capture: false }
     });
     stopBtn.disabled=false;
+    loadUsb.disabled=true;
+    document.querySelector('label[for="load-usb"]').classList.add('disabled');
     emulator.add_listener("download-progress", e => {
      if (e.total && e.loaded) {
        prog.style.width = Math.floor(e.loaded / e.total * 100) + "%";
@@ -587,7 +595,18 @@ vmUrl.onchange = async () => {
   });
   };
   stopBtn.onclick=()=>{
-    if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;dlHda.disabled=false;overlay.style.display="none";fb.textContent="";}
+    if(emulator){
+      emulator.stop();
+      emulator.destroy();
+      emulator=null;
+      stopBtn.disabled=true;
+      startBtn.disabled=false;
+      dlHda.disabled=false;
+      loadUsb.disabled = false;
+      document.querySelector('label[for="load-usb"]').classList.remove('disabled');
+      overlay.style.display="none";
+      fb.textContent="";
+    }
   };
   dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
   dlHda.onclick = () => {
