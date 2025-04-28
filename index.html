@@ -312,22 +312,29 @@ const codeToScancodes = {
   });
   updateVK();
 
+const flatLayout = keyLayout.flat();
 const charMap = {};
-for (const [code, char] of km) {
-  const sc = codeToScancodes[code];
-  if (!sc) continue;
-  charMap[char] = {
-    make:      sc[0],
-    break:     sc[1],
-    needShift: char !== char.toLowerCase()
-  };
-}
+flatLayout.forEach(k => {
+  // k.n = label sans Shift (ex: "a", "1", "`", ...)
+  charMap[k.n] = { make: k.mk, break: k.bk, needShift: false };
+  // k.s = label avec Shift (ex: "A", "!", "~", ...)
+  if (k.s) {
+    charMap[k.s] = { make: k.mk, break: k.bk, needShift: true };
+  }
+});
+
+const SHIFT_MK    = codeToScancodes.ShiftLeft[0];
+const SHIFT_BK    = codeToScancodes.ShiftLeft[1];
+const autoShifted = new Set();
 
 function getKeyInfo(e) {
-  const entry = charMap[e.key];
-  if (entry) return entry;
+  const info = charMap[e.key];
+  if (info) return info;
   const sc = codeToScancodes[e.code];
-  if (sc)  return { make: sc[0], break: sc[1], needShift: false };
+  if (sc) {
+    return { make: sc[0], break: sc[1], needShift: false };
+  }
+
   return null;
 }
 
