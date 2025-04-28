@@ -221,6 +221,9 @@ function getKeyInfo(e) {
   return null;
 }
 
+const SHIFT_MK = codeToScancodes["ShiftLeft"][0];
+const SHIFT_BK = codeToScancodes["ShiftLeft"][1];
+
 document.addEventListener("keydown", e => {
   if (!emulator) return;
   if (e.repeat) return;      // ignore les répétitions
