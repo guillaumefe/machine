@@ -326,60 +326,62 @@ const SHIFT_BK    = codeToScancodes.ShiftLeft[1];
 const autoShifted = new Set();
 
 function getKeyInfo(e) {
-  // Ne jamais retourner de scancode de Shift physiquement
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
-    return null;
-  }
-
+  // d’abord, votre lookup par caractère…
   const entry = charMap[e.key];
   if (entry) return entry;
 
-  // Seules les touches de contrôle non-imprimables
-  // (Enter, Tab, Backspace…) passent par fallback
+  // ensuite, fallback par code physique (y compris ShiftLeft/ShiftRight)
   const sc = codeToScancodes[e.code];
-  if (sc)  return { make: sc[0], break: sc[1], needShift: false };
-
+  if (sc) {
+    return {
+      make:      sc[0],
+      break:     sc[1],
+      needShift: false    // Shift lui-même n’a pas besoin d’autre Shift
+    };
+  }
   return null;
 }
 
-document.addEventListener("keydown", e => {
+  document.addEventListener("keydown", e => {
   if (e.repeat) return;
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") return;
-  const char = e.key;
-  const hostCode = localCharToCode[char];
-  if (!hostCode) return;
-  const sc = codeToScancodes[hostCode];
-  if (!sc) return;
-  const [make, brk] = sc;
+  const info = getKeyInfo(e);
+  if (!info) return;
+
   e.preventDefault();
   e.stopImmediatePropagation();
-  const needShift = char !== char.toLowerCase();
-  if (needShift && !e.getModifierState("Shift")) {
+
+  // si needShift (pour un caractère majuscule), on simule avant
+  if (info.needShift && !e.getModifierState("Shift")) {
     emulator.keyboard_send_scancodes([SHIFT_MK]);
-    autoShifted.add(make);
+    autoShifted.add(info.make);
   }
-  emulator.keyboard_send_scancodes([make]);
-  const btn = vk.querySelector(`.vk-key[data-make="${make}"]`);
+
+  // envoie toujours le make de la touche (ShiftLeft/Right compris)
+  emulator.keyboard_send_scancodes([info.make]);
+
+  // visuel
+  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
 
 document.addEventListener("keyup", e => {
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") return;
-  const char = e.key;
-  const hostCode = localCharToCode[char];
-  if (!hostCode) return;
-  const sc = codeToScancodes[hostCode];
-  if (!sc) return;
-  const [make, brk] = sc;
+  const info = getKeyInfo(e);
+  if (!info) return;
+
   e.preventDefault();
   e.stopImmediatePropagation();
-  emulator.keyboard_send_scancodes([brk]);
-  const needShift = char !== char.toLowerCase();
-  if (needShift && autoShifted.has(make)) {
+
+  // envoie le break
+  emulator.keyboard_send_scancodes([info.break]);
+
+  // si on avait auto-shifté, on relâche
+  if (info.needShift && autoShifted.has(info.make)) {
     emulator.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.delete(make);
+    autoShifted.delete(info.make);
   }
-  const btn = vk.querySelector(`.vk-key[data-make="${make}"]`);
+
+  // visuel
+  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.remove("pressed");
 }, true);
 
