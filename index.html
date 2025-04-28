@@ -344,46 +344,45 @@ function getKeyInfo(e) {
 
 document.addEventListener("keydown", e => {
   if (e.repeat) return;
-  const info = getKeyInfo(e);
-  if (!info) return;
-
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") return;
+  const char = e.key;
+  const hostCode = localCharToCode[char];
+  if (!hostCode) return;
+  const sc = codeToScancodes[hostCode];
+  if (!sc) return;
+  const [make, brk] = sc;
   e.preventDefault();
-  e.stopPropagation();
-
-  // Si le caractère requiert Shift mais que l’hôte n’est pas en Shift,
-  // on *simule* un Shift vers la VM.
-  if (info.needShift && !e.getModifierState("Shift")) {
+  e.stopImmediatePropagation();
+  const needShift = char !== char.toLowerCase();
+  if (needShift && !e.getModifierState("Shift")) {
     emulator.keyboard_send_scancodes([SHIFT_MK]);
-    autoShifted.add(info.make);
+    autoShifted.add(make);
   }
-
-  emulator.keyboard_send_scancodes([info.make]);
-
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  emulator.keyboard_send_scancodes([make]);
+  const btn = vk.querySelector(`.vk-key[data-make="${make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
 
 document.addEventListener("keyup", e => {
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
-    // on ignore toujours le relâchement physique du Shift
-    return;
-  }
-  const info = getKeyInfo(e);
-  if (!info) return;
-
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") return;
+  const char = e.key;
+  const hostCode = localCharToCode[char];
+  if (!hostCode) return;
+  const sc = codeToScancodes[hostCode];
+  if (!sc) return;
+  const [make, brk] = sc;
   e.preventDefault();
-  e.stopPropagation();
-
-  emulator.keyboard_send_scancodes([info.break]);
-
-  if (info.needShift && autoShifted.has(info.make)) {
+  e.stopImmediatePropagation();
+  emulator.keyboard_send_scancodes([brk]);
+  const needShift = char !== char.toLowerCase();
+  if (needShift && autoShifted.has(make)) {
     emulator.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.delete(info.make);
+    autoShifted.delete(make);
   }
-
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  const btn = vk.querySelector(`.vk-key[data-make="${make}"]`);
   if (btn) btn.classList.remove("pressed");
 }, true);
+
 
 
   vk.addEventListener("mousedown",e=>{
