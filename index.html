@@ -31,12 +31,6 @@ nav button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
-nav label.disabled {        /* cible les <label class="disabled"> dans <nav> */
-  color: #888;
-  cursor: not-allowed;
-  opacity: 0.5;
-  pointer-events: none;     /* pour désactiver les clics sur le label */
-}
 nav input { display:none; }
 #main { display:flex; flex-direction:column; height:calc(100% - 2.5rem); position:relative; }
 #screen_container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem; overflow:hidden; position:relative; }
@@ -107,6 +101,7 @@ nav input { display:none; }
       <li><b>Shutdown the VM</b> once the installation is complete.</li>
       <li><b>Use the generated <code>disk.img</code></b> as your bootable hard drive image.</li>
     </ol>
+    <button id="toggle-qwerty-btn">Force QWERTY: Off</button>
     <button id="close-tutorial" style="margin-top:2rem; padding:0.5rem 1rem; background:#333; border:1px solid #555; border-radius:4px; color:#eee; font-size:1rem; cursor:pointer;">Close</button>
   </div>
 </div>
@@ -153,6 +148,12 @@ if (fb.children.length === 0) {
   let usbBuf=null;
   let shiftDown=false;
   let capsLock=false;
+  let forceQwerty = false;
+  const toggleQwertyBtn = document.getElementById("toggle-qwerty-btn");
+  toggleQwertyBtn.onclick = () => {
+    forceQwerty = !forceQwerty;
+    toggleQwertyBtn.textContent = `🖮 Force QWERTY: ${forceQwerty ? "On" : "Off"}`;
+  };
   let readyToStart = false;
   function allResourcesLoaded() {
     if (readyToStart) {
@@ -172,7 +173,6 @@ if (fb.children.length === 0) {
   closeBtn.onclick=()=>menu.classList.remove("visible");
   document.onclick=e=>{if(!menu.contains(e.target)&&e.target!==menuBtn)menu.classList.remove("visible");};
   vkToggle.onclick=()=>vk.classList.toggle("active");
-
 const keyLayout = [
   // Rangée 1
   [
@@ -283,9 +283,6 @@ const codeToScancodes = {
   CapsLock:     [58, 186]
 };
 
-const SHIFT_MK = codeToScancodes["ShiftLeft"][0];
-const SHIFT_BK = codeToScancodes["ShiftLeft"][1];
-
   function updateVK(){
     vk.querySelectorAll(".vk-key").forEach(b=>{
       const n=b.dataset.n;
@@ -315,57 +312,86 @@ const SHIFT_BK = codeToScancodes["ShiftLeft"][1];
   });
   updateVK();
 
-const flatLayout = keyLayout.flat();
-const qwertyByCode = {};
-for (const [code, [mk, bk]] of Object.entries(codeToScancodes)) {
-  const entry = flatLayout.find(k => k.mk === mk);
-  if (entry) {
-    qwertyByCode[code] = entry;
+const flatLayout   = keyLayout.flat();
+const SHIFT_MK     = 42,   SHIFT_BK = 170;
+const autoShifted  = new Set();
+
+function getKeyInfo(e) {
+  // Mode Forçage QWERTY
+  if (forceQwerty) {
+    const sc = codeToScancodes[e.code];
+    if (sc) {
+      return { make: sc[0], break: sc[1], needShift: false };
+    }
+    return null;
   }
+
+  // 1) Recherche caractère imprimable
+  let keyObj = flatLayout.find(k => k.n === e.key);
+  let needShift = false;
+
+  if (!keyObj) {
+    keyObj = flatLayout.find(k => k.s === e.key);
+    if (keyObj) needShift = true;
+  }
+
+  if (keyObj) {
+    return { make: keyObj.mk, break: keyObj.bk, needShift };
+  }
+
+  // 2) Fallback touches de contrôle (Tab, Enter…)
+  const sc = codeToScancodes[e.code];
+  if (sc) {
+    return { make: sc[0], break: sc[1], needShift: false };
+  }
+
+  // 3) Inconnu
+  return null;
 }
 
+// keydown
 document.addEventListener("keydown", e => {
-  if (!emulator) return;
-  if (e.repeat) return;      // ignore les répétitions
+  if (e.repeat) return;              // ignore répétitions
+  const info = getKeyInfo(e);
+  if (!info) return;
 
   e.preventDefault();
   e.stopImmediatePropagation();
 
-  // si besoin de Shift, on presse ShiftLeft d'abord
+  // 1) simule Shift si besoin
   if (info.needShift && !e.getModifierState("Shift")) {
-    emulator.keyboard_send_scancodes([SHIFT_MK]);
+    emulator && emulator.keyboard_send_scancodes([SHIFT_MK]);
     autoShifted.add(info.make);
   }
 
-  // envoi du scancode principal
-  emulator.keyboard_send_scancodes([info.make]);
+  // 2) envoie make
+  emulator && emulator.keyboard_send_scancodes([info.make]);
 
-  // mise en surbrillance visuelle
-  const keyEl = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
-  if (keyEl) {
-    keyEl.classList.add("pressed");
-  }
+  // 3) highlight
+  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  if (btn) btn.classList.add("pressed");
 }, true);
 
+
+// keyup
 document.addEventListener("keyup", e => {
-  if (!emulator) return;
+  const info = getKeyInfo(e);
+  if (!info) return;
 
   e.preventDefault();
   e.stopImmediatePropagation();
 
-  // envoi du scancode de relâchement
-  emulator.keyboard_send_scancodes([info.break]);
+  // 1) envoie break
+  emulator && emulator.keyboard_send_scancodes([info.break]);
 
-  // si on avait auto-shifté, on relâche ShiftLeft
+  // 2) dé-highlight
+  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  if (btn) btn.classList.remove("pressed");
+
+  // 3) relâche Shift simulé
   if (info.needShift && autoShifted.has(info.make)) {
-    emulator.keyboard_send_scancodes([SHIFT_BK]);
+    emulator && emulator.keyboard_send_scancodes([SHIFT_BK]);
     autoShifted.delete(info.make);
-  }
-
-  // retrait de la surbrillance
-  const keyEl = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
-  if (keyEl) {
-    keyEl.classList.remove("pressed");
   }
 }, true);
 
@@ -534,11 +560,9 @@ vmUrl.onchange = async () => {
       screen:{canvas:document.getElementById("screen")},
       autostart:true,
       ...(bootOptions && { cmdline: bootOptions }),
-      keyboard: { capture: true }
+      keyboard: { capture: false }
     });
     stopBtn.disabled=false;
-    loadUsb.disabled=true;
-    document.querySelector('label[for="load-usb"]').classList.add('disabled');
     emulator.add_listener("download-progress", e => {
      if (e.total && e.loaded) {
        prog.style.width = Math.floor(e.loaded / e.total * 100) + "%";
@@ -563,18 +587,7 @@ vmUrl.onchange = async () => {
   });
   };
   stopBtn.onclick=()=>{
-    if(emulator){
-      emulator.stop();
-      emulator.destroy();
-      emulator=null;
-      stopBtn.disabled=true;
-      startBtn.disabled=false;
-      dlHda.disabled=false;
-      loadUsb.disabled = false;
-      document.querySelector('label[for="load-usb"]').classList.remove('disabled');
-      overlay.style.display="none";
-      fb.textContent="";
-    }
+    if(emulator){emulator.stop();emulator.destroy();emulator=null;stopBtn.disabled=true;startBtn.disabled=false;dlHda.disabled=false;overlay.style.display="none";fb.textContent="";}
   };
   dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
   dlHda.onclick = () => {
@@ -588,19 +601,19 @@ vmUrl.onchange = async () => {
       a.click();
     });
   };
-  const tutorialBtn = document.getElementById("tutorial-btn");
-  const tutorialPopup = document.getElementById("tutorial-popup");
-  const closeTutorial = document.getElementById("close-tutorial");
-  
-  tutorialBtn.onclick = () => {
-    tutorialPopup.style.display = "block";
-  };
-  
-  closeTutorial.onclick = () => {
-    tutorialPopup.style.display = "none";
-  };
   log("⏳ Waiting for your actions…");
 });
+const tutorialBtn = document.getElementById("tutorial-btn");
+const tutorialPopup = document.getElementById("tutorial-popup");
+const closeTutorial = document.getElementById("close-tutorial");
+
+tutorialBtn.onclick = () => {
+  tutorialPopup.style.display = "block";
+};
+
+closeTutorial.onclick = () => {
+  tutorialPopup.style.display = "none";
+};
 </script>
 </body>
 </html>
