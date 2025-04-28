@@ -37,7 +37,7 @@ nav label.disabled {        /* cible les <label class="disabled"> dans <nav> */
    opacity: 0.5;
    pointer-events: none;     /* pour désactiver les clics sur le label */
  }
-nav input[type="file"] { 
+nav input { 
   display: none; 
 }
 #main { display:flex; flex-direction:column; height:calc(100% - 2.5rem); position:relative; }
@@ -429,6 +429,7 @@ function getKeyInfo(e) {
 
 // keydown
 document.addEventListener("keydown", e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.repeat) return;              // ignore répétitions
   const info = getKeyInfo(e);
   if (!info) return;
@@ -453,6 +454,7 @@ document.addEventListener("keydown", e => {
 
 // keyup
 document.addEventListener("keyup", e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   const info = getKeyInfo(e);
   if (!info) return;
 
