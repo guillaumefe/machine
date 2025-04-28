@@ -619,6 +619,7 @@ vmUrl.onchange = async () => {
     }
     overlay.style.display="flex";
     prog.style.width="0%";
+    const relayUrl = document.getElementById("relay-url").value.trim();
     const hda = { url: vmSource.url, async: true };
     const bootOptions = document.getElementById("boot-options").value.trim();
     requestAnimationFrame(() => {
@@ -630,7 +631,7 @@ vmUrl.onchange = async () => {
       vga_memory_size:16*1024*1024,
       hda,
       ...(usbBuf&&{hdb:{buffer:usbBuf,size:usbBuf.byteLength}}),
-      network_relay_url: "wss://relay.widgetry.org/",
+      network_relay_url: relayUrl,
       serial_container: fb || document.createElement("div"),
       screen_container:document.getElementById("screen_container"),
       screen:{canvas:document.getElementById("screen")},
