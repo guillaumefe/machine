@@ -116,6 +116,7 @@ const V86_WASM='./v86.wasm';
 const V86_SEABIOS='./seabios.bin';
 const V86_VGABIOS='./vgabios.bin';
 window.addEventListener("DOMContentLoaded",async()=>{
+  const km = await navigator.keyboard.getLayoutMap();
   const MAX_FILE = 2 * 1024 * 1024 * 1024;
   const vmFile=document.getElementById("vm-file");
   const vmUrl=document.getElementById("vm-url");
@@ -311,29 +312,22 @@ const codeToScancodes = {
   });
   updateVK();
 
-const flatLayout = keyLayout.flat();
 const charMap = {};
-flatLayout.forEach(k => {
-  if (typeof k.n === "string") {
-    charMap[k.n] = { make: k.mk, break: k.bk, needShift: false };
-  }
-  if (typeof k.s === "string") {
-    charMap[k.s] = { make: k.mk, break: k.bk, needShift: true };
-  }
-});
-const SHIFT_MK      = codeToScancodes["ShiftLeft"][0];
-const SHIFT_BK      = codeToScancodes["ShiftLeft"][1];
-const autoShifted   = new Set();
+for (const [code, char] of km) {
+  const sc = codeToScancodes[code];
+  if (!sc) continue;
+  charMap[char] = {
+    make:      sc[0],
+    break:     sc[1],
+    needShift: char !== char.toLowerCase()
+  };
+}
 
 function getKeyInfo(e) {
   const entry = charMap[e.key];
-  if (entry) {
-    return entry;
-  }
+  if (entry) return entry;
   const sc = codeToScancodes[e.code];
-  if (sc) {
-    return { make: sc[0], break: sc[1], needShift: false };
-  }
+  if (sc)  return { make: sc[0], break: sc[1], needShift: false };
   return null;
 }
 
