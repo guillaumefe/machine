@@ -118,6 +118,18 @@ const V86_VGABIOS='./vgabios.bin';
 window.addEventListener("DOMContentLoaded",async()=>{
   const MAX_FILE = 2 * 1024 * 1024 * 1024;
   const vmFile=document.getElementById("vm-file");
+
+const km = await navigator.keyboard.getLayoutMap();
+// charMap : mappe chaque caractère rendu par e.key → son scancode QWERTY
+const charMap = {};
+for (const [code, label] of km) {
+  const sc = codeToScancodes[code];
+  if (!sc) continue;
+  // besoin de Shift si label est en majuscule ou un caractère de Shift (ex. ":")
+  const needShift = label !== label.toLowerCase();
+  charMap[label] = { make: sc[0], break: sc[1], needShift };
+}
+  
   const vmUrl=document.getElementById("vm-url");
   const startBtn=document.getElementById("start-btn");
   const stopBtn=document.getElementById("stop-btn");
@@ -285,18 +297,6 @@ const codeToScancodes = {
 const SHIFT_MK    = codeToScancodes.ShiftLeft[0];
 const SHIFT_BK    = codeToScancodes.ShiftLeft[1];
 const autoShifted = new Set();
-
-const km = await navigator.keyboard.getLayoutMap();
-// charMap : mappe chaque caractère rendu par e.key → son scancode QWERTY
-const charMap = {};
-for (const [code, label] of km) {
-  const sc = codeToScancodes[code];
-  if (!sc) continue;
-  // besoin de Shift si label est en majuscule ou un caractère de Shift (ex. ":")
-  const needShift = label !== label.toLowerCase();
-  charMap[label] = { make: sc[0], break: sc[1], needShift };
-}
-
 
   function updateVK(){
     vk.querySelectorAll(".vk-key").forEach(b=>{
@@ -610,19 +610,19 @@ vmUrl.onchange = async () => {
       a.click();
     });
   };
+  const tutorialBtn = document.getElementById("tutorial-btn");
+  const tutorialPopup = document.getElementById("tutorial-popup");
+  const closeTutorial = document.getElementById("close-tutorial");
+  
+  tutorialBtn.onclick = () => {
+    tutorialPopup.style.display = "block";
+  };
+  
+  closeTutorial.onclick = () => {
+    tutorialPopup.style.display = "none";
+  };
   log("⏳ Waiting for your actions…");
 });
-const tutorialBtn = document.getElementById("tutorial-btn");
-const tutorialPopup = document.getElementById("tutorial-popup");
-const closeTutorial = document.getElementById("close-tutorial");
-
-tutorialBtn.onclick = () => {
-  tutorialPopup.style.display = "block";
-};
-
-closeTutorial.onclick = () => {
-  tutorialPopup.style.display = "none";
-};
 </script>
 </body>
 </html>
