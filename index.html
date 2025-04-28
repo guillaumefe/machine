@@ -173,6 +173,53 @@ if (fb.children.length === 0) {
   document.onclick=e=>{if(!menu.contains(e.target)&&e.target!==menuBtn)menu.classList.remove("visible");};
   vkToggle.onclick=()=>vk.classList.toggle("active");
 
+const keyLayout = [
+  // Rangée 1
+  [
+    {mk:41,bk:169,n:"`",s:"~"},{mk:2,bk:130,n:"1",s:"!"},{mk:3,bk:131,n:"2",s:"@"},
+    {mk:4,bk:132,n:"3",s:"#"}, {mk:5,bk:133,n:"4",s:"$"},{mk:6,bk:134,n:"5",s:"%"},
+    {mk:7,bk:135,n:"6",s:"^"},{mk:8,bk:136,n:"7",s:"&"},{mk:9,bk:137,n:"8",s:"*"},
+    {mk:10,bk:138,n:"9",s:"("},{mk:11,bk:139,n:"0",s:")"},{mk:12,bk:140,n:"-",s:"_"},
+    {mk:13,bk:141,n:"=",s:"+"},{mk:14,bk:142,n:"←"}
+  ],
+  // Rangée 2
+  [
+    {mk:15,bk:143,n:"Tab"},{mk:16,bk:144,n:"q",s:"Q"},{mk:17,bk:145,n:"w",s:"W"},
+    {mk:18,bk:146,n:"e",s:"E"},{mk:19,bk:147,n:"r",s:"R"},{mk:20,bk:148,n:"t",s:"T"},
+    {mk:21,bk:149,n:"y",s:"Y"},{mk:22,bk:150,n:"u",s:"U"},{mk:23,bk:151,n:"i",s:"I"},
+    {mk:24,bk:152,n:"o",s:"O"},{mk:25,bk:153,n:"p",s:"P"},{mk:26,bk:154,n:"[",s:"{"},
+    {mk:27,bk:155,n:"]",s:"}"},{mk:43,bk:171,n:"\\",s:"|"}
+  ],
+  // Rangée 3 (ajout de Enter à la fin)
+  [
+    {mk:58,bk:186,n:"Caps"},{mk:30,bk:158,n:"a",s:"A"},{mk:31,bk:159,n:"s",s:"S"},
+    {mk:32,bk:160,n:"d",s:"D"},{mk:33,bk:161,n:"f",s:"F"},{mk:34,bk:162,n:"g",s:"G"},
+    {mk:35,bk:163,n:"h",s:"H"},{mk:36,bk:164,n:"j",s:"J"},{mk:37,bk:165,n:"k",s:"K"},
+    {mk:38,bk:166,n:"l",s:"L"},{mk:39,bk:167,n:";",s:":"},{mk:40,bk:168,n:"'",s:'"'},
+    // Touche Entrée
+    {mk:28,bk:156,n:"Enter"}
+  ],
+  // Rangée 4
+  [
+    {mk:42,bk:170,n:"Shift"},{mk:44,bk:172,n:"z",s:"Z"},{mk:45,bk:173,n:"x",s:"X"},
+    {mk:46,bk:174,n:"c",s:"C"},{mk:47,bk:175,n:"v",s:"V"},{mk:48,bk:176,n:"b",s:"B"},
+    {mk:49,bk:177,n:"n",s:"N"},{mk:50,bk:178,n:"m",s:"M"},{mk:51,bk:179,n:",",s:"<"},
+    {mk:52,bk:180,n:".",s:">"},{mk:53,bk:181,n:"/",s:"?"},{mk:54,bk:182,n:"Shift"}
+  ],
+  // Rangée 5
+  [
+    { mk: 29, bk: 157, n: "Ctrl" },
+    { mk: 56, bk: 184, n: "Alt" },
+    // Touche Espace
+    { mk: 57, bk: 185, n: "␣" },
+    // Optionnel : AltGr
+    { mk: 100, bk: 100, n: "AltGr" }
+  ]
+];
+
+const SHIFT_MK = codeToScancodes["ShiftLeft"][0];
+const SHIFT_BK = codeToScancodes["ShiftLeft"][1];
+
   function updateVK(){
     vk.querySelectorAll(".vk-key").forEach(b=>{
       const n=b.dataset.n;
@@ -220,53 +267,6 @@ function getKeyInfo(e) {
 
   return null;
 }
-
-const keyLayout = [
-  // Rangée 1
-  [
-    {mk:41,bk:169,n:"`",s:"~"},{mk:2,bk:130,n:"1",s:"!"},{mk:3,bk:131,n:"2",s:"@"},
-    {mk:4,bk:132,n:"3",s:"#"}, {mk:5,bk:133,n:"4",s:"$"},{mk:6,bk:134,n:"5",s:"%"},
-    {mk:7,bk:135,n:"6",s:"^"},{mk:8,bk:136,n:"7",s:"&"},{mk:9,bk:137,n:"8",s:"*"},
-    {mk:10,bk:138,n:"9",s:"("},{mk:11,bk:139,n:"0",s:")"},{mk:12,bk:140,n:"-",s:"_"},
-    {mk:13,bk:141,n:"=",s:"+"},{mk:14,bk:142,n:"←"}
-  ],
-  // Rangée 2
-  [
-    {mk:15,bk:143,n:"Tab"},{mk:16,bk:144,n:"q",s:"Q"},{mk:17,bk:145,n:"w",s:"W"},
-    {mk:18,bk:146,n:"e",s:"E"},{mk:19,bk:147,n:"r",s:"R"},{mk:20,bk:148,n:"t",s:"T"},
-    {mk:21,bk:149,n:"y",s:"Y"},{mk:22,bk:150,n:"u",s:"U"},{mk:23,bk:151,n:"i",s:"I"},
-    {mk:24,bk:152,n:"o",s:"O"},{mk:25,bk:153,n:"p",s:"P"},{mk:26,bk:154,n:"[",s:"{"},
-    {mk:27,bk:155,n:"]",s:"}"},{mk:43,bk:171,n:"\\",s:"|"}
-  ],
-  // Rangée 3 (ajout de Enter à la fin)
-  [
-    {mk:58,bk:186,n:"Caps"},{mk:30,bk:158,n:"a",s:"A"},{mk:31,bk:159,n:"s",s:"S"},
-    {mk:32,bk:160,n:"d",s:"D"},{mk:33,bk:161,n:"f",s:"F"},{mk:34,bk:162,n:"g",s:"G"},
-    {mk:35,bk:163,n:"h",s:"H"},{mk:36,bk:164,n:"j",s:"J"},{mk:37,bk:165,n:"k",s:"K"},
-    {mk:38,bk:166,n:"l",s:"L"},{mk:39,bk:167,n:";",s:":"},{mk:40,bk:168,n:"'",s:'"'},
-    // Touche Entrée
-    {mk:28,bk:156,n:"Enter"}
-  ],
-  // Rangée 4
-  [
-    {mk:42,bk:170,n:"Shift"},{mk:44,bk:172,n:"z",s:"Z"},{mk:45,bk:173,n:"x",s:"X"},
-    {mk:46,bk:174,n:"c",s:"C"},{mk:47,bk:175,n:"v",s:"V"},{mk:48,bk:176,n:"b",s:"B"},
-    {mk:49,bk:177,n:"n",s:"N"},{mk:50,bk:178,n:"m",s:"M"},{mk:51,bk:179,n:",",s:"<"},
-    {mk:52,bk:180,n:".",s:">"},{mk:53,bk:181,n:"/",s:"?"},{mk:54,bk:182,n:"Shift"}
-  ],
-  // Rangée 5
-  [
-    { mk: 29, bk: 157, n: "Ctrl" },
-    { mk: 56, bk: 184, n: "Alt" },
-    // Touche Espace
-    { mk: 57, bk: 185, n: "␣" },
-    // Optionnel : AltGr
-    { mk: 100, bk: 100, n: "AltGr" }
-  ]
-];
-
-const SHIFT_MK = codeToScancodes["ShiftLeft"][0];
-const SHIFT_BK = codeToScancodes["ShiftLeft"][1];
 
 document.addEventListener("keydown", e => {
   if (!emulator) return;
