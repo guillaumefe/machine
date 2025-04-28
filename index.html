@@ -340,47 +340,29 @@ function getKeyInfo(e) {
 
 document.addEventListener("keydown", e => {
   if (e.repeat) return;
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    emulator.keyboard_send_scancodes([SHIFT_MK]);
-    autoShifted.add(SHIFT_MK);
-    return;
-  }
-  const info = getKeyInfo(e);
-  if (!info) return;
+  const sc = codeToScancodes[e.code];
+  if (!sc) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  const wantShift = info.needShift || e.getModifierState("Shift");
-  if (wantShift && !autoShifted.has(SHIFT_MK)) {
-    emulator.keyboard_send_scancodes([SHIFT_MK]);
-    autoShifted.add(SHIFT_MK);
-  }
-  emulator.keyboard_send_scancodes([info.make]);
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  // envoi du make
+  emulator.keyboard_send_scancodes([sc[0]]);
+  // visuel
+  const btn = vk.querySelector(`.vk-key[data-make="${sc[0]}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
 
 document.addEventListener("keyup", e => {
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    emulator.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.delete(SHIFT_MK);
-    return;
-  }
-  const info = getKeyInfo(e);
-  if (!info) return;
+  const sc = codeToScancodes[e.code];
+  if (!sc) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  emulator.keyboard_send_scancodes([info.break]);
-  if (autoShifted.has(SHIFT_MK)) {
-    emulator.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.delete(SHIFT_MK);
-  }
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
+  // envoi du break
+  emulator.keyboard_send_scancodes([sc[1]]);
+  // visuel
+  const btn = vk.querySelector(`.vk-key[data-make="${sc[0]}"]`);
   if (btn) btn.classList.remove("pressed");
 }, true);
+
 
   vk.addEventListener("mousedown",e=>{
     const b=e.target;
