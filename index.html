@@ -336,18 +336,15 @@ for (const [code, [mk, bk]] of Object.entries(codeToScancodes)) {
 }
 
 function getKeyInfo(e) {
-  // 1) Priorité : caractère réel tapé (avec Shift géré)
-  const keyLabel = e.key.length === 1 ? e.key : e.key.toLowerCase();
-  const entry = charMap[keyLabel];
+  const entry = charMap[e.key];
   if (entry) return entry;
 
-  // 2) Sinon, on tombe sur une touche fonctionnelle (Tab, Ctrl, etc.)
   const sc = codeToScancodes[e.code];
-  if (sc) return { make: sc[0], break: sc[1], needShift: false };
+  if (sc)  return { make: sc[0], break: sc[1], needShift: false };
 
-  // 3) Rien trouvé
   return null;
 }
+
 
 document.addEventListener("keydown", e => {
   if (e.repeat) return;
