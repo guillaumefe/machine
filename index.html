@@ -311,56 +311,29 @@ const codeToScancodes = {
   });
   updateVK();
 
-const flatLayout    = keyLayout.flat();
+const flatLayout = keyLayout.flat();
+const charMap = {};
+flatLayout.forEach(k => {
+  if (typeof k.n === "string") {
+    charMap[k.n] = { make: k.mk, break: k.bk, needShift: false };
+  }
+  if (typeof k.s === "string") {
+    charMap[k.s] = { make: k.mk, break: k.bk, needShift: true };
+  }
+});
 const SHIFT_MK      = codeToScancodes["ShiftLeft"][0];
 const SHIFT_BK      = codeToScancodes["ShiftLeft"][1];
-const ALT_GRAPH_MK  = codeToScancodes["AltRight"][0];
-const ALT_GRAPH_BK  = codeToScancodes["AltRight"][1];
 const autoShifted   = new Set();
 
-const altGraphMap = {
-  "@": 23,  // QWERTY 'I' key → @
-  "€": 13,  // QWERTY '=' key → €
-  "{": 26,  // '['
-  "}": 27,  // ']'
-  "|": 43,  // '\'
-};
-
 function getKeyInfo(e) {
-  let keyObj = flatLayout.find(k => k.n === e.key);
-  let needShift = false;
-  let useAltGr = false;
-
-  if (!keyObj) {
-    keyObj = flatLayout.find(k => k.s === e.key);
-    if (keyObj) needShift = true;
+  const entry = charMap[e.key];
+  if (entry) {
+    return entry;
   }
-
-  if (!keyObj && altGraphMap[e.key] !== undefined) {
-    const mk = altGraphMap[e.key];
-    keyObj = flatLayout.find(k => k.mk === mk);
-    useAltGr = true;
-  }
-
-  if (keyObj) {
-    return {
-      make: keyObj.mk,
-      break: keyObj.bk,
-      needShift,
-      useAltGr
-    };
-  }
-
   const sc = codeToScancodes[e.code];
   if (sc) {
-    return {
-      make: sc[0],
-      break: sc[1],
-      needShift: false,
-      useAltGr: false
-    };
+    return { make: sc[0], break: sc[1], needShift: false };
   }
-
   return null;
 }
 
@@ -370,16 +343,11 @@ document.addEventListener("keydown", e => {
   if (!info) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (info.useAltGr) {
-    emulator.keyboard_send_scancodes([ALT_GRAPH_MK]);
-  } else if (info.needShift && !e.getModifierState("Shift")) {
+  if (info.needShift && !e.getModifierState("Shift")) {
     emulator.keyboard_send_scancodes([SHIFT_MK]);
     autoShifted.add(info.make);
   }
   emulator.keyboard_send_scancodes([info.make]);
-  if (info.useAltGr) {
-    emulator.keyboard_send_scancodes([ALT_GRAPH_BK]);
-  }
   const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
   if (btn) btn.classList.add("pressed");
 }, true);
