@@ -1,713 +1,193 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>v86 VM with Virtual USB & Local VM</title>
-<style>
-:root { color-scheme: dark; }
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin:0; padding:0; width:100%; height:100%; background:#000; color:#eee; font-family:monospace; overflow:hidden; }
-header { display:flex; align-items:center; justify-content:space-between; background:#111; padding:.5rem 1rem; z-index:200; }
-header > div:first-child { display:flex; align-items:center; }
-header input[type="file"], header input[type="text"] { margin-right:.5rem; background:#111; color:#eee; border:1px solid #555; padding:.3rem; border-radius:4px; }
-#menu-btn, #vk-toggle { background:none; border:none; color:#eee; font-size:1.5rem; cursor:pointer; margin-right:1rem; }
-#start-btn, #stop-btn { padding:.4rem 1rem; background:#222; border:1px solid #555; border-radius:4px; color:#888; cursor:not-allowed; }
-#start-btn:enabled, #stop-btn:enabled { color:#eee; cursor:pointer; }
-#start-btn:disabled,
-#stop-btn:disabled {
-  /* déjà : color: #888; cursor: not-allowed; */
-  pointer-events: none;
-  opacity: 0.5; /* (optionnel) */
-}
-nav { position:fixed; top:0; bottom:0; left:0; width:16rem; background:#111; display:flex; flex-direction:column; gap:.5rem; padding:0; transform:translateX(-100%); transition:transform .2s ease; z-index:150; }
-nav.visible { transform:translateX(0); }
-.menu-header { display:flex; align-items:center; justify-content:space-between; background:#222; padding:.5rem 1rem; border-bottom:1px solid #333; }
-.menu-header h2 { margin:0; font-size:1rem; }
-.menu-header button { background:none; border:none; color:#eee; font-size:1.2rem; cursor:pointer; }
-nav label, nav button { background:#222; border:1px solid #555; border-radius:4px; color:#eee; padding:.5rem; cursor:pointer; width:calc(100% - 2rem); margin:.25rem 1rem; text-align:left; }
-nav button:disabled {
-  color: #888;
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-nav label.disabled {        /* cible les <label class="disabled"> dans <nav> */
-   color: #888;
-   cursor: not-allowed;
-   opacity: 0.5;
-   pointer-events: none;     /* pour désactiver les clics sur le label */
- }
-nav input { 
-  display: none; 
-}
-#main { display:flex; flex-direction:column; height:calc(100% - 2.5rem); position:relative; }
-#screen_container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem; overflow:hidden; position:relative; }
-#screen { border:2px solid #444; max-width:100%; height:auto; }
-#fallback { width:100%; max-width:800px; min-height:4rem; background:#111; border:1px solid #333; padding:.5rem; overflow:auto; white-space:pre-wrap; font-size:.85rem; color:#0f0; }
-#loading-overlay { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:400; color:#0f0; font-size:1.2rem; }
-#progress-bar { width:80%; height:1rem; background:#333; border:1px solid #555; margin-top:1rem; border-radius:5px; overflow:hidden; }
-#progress { width:0%; height:100%; background:limegreen; transition:width .3s ease; }
-#virtual-keyboard { display:none; position:fixed; bottom:0; left:50%; transform:translateX(-50%); background:#222; padding:.5rem; box-shadow:0 -2px 5px rgba(0,0,0,0.5); border-radius:8px; max-width:95%; overflow:auto; z-index:300; }
-#virtual-keyboard.active { display:flex; flex-direction:column; }
-.vk-row { display:flex; justify-content:center; margin:2px 0; }
-.vk-key { margin:2px; min-width:2.5rem; height:2.5rem; background:#333; border:1px solid #555; border-radius:4px; color:#eee; font-size:.85rem; text-align:center; line-height:2.5rem; cursor:pointer; user-select:none; }
-.vk-key.active { background:#555; font-weight:bold; }
-.vk-key.pressed { background:#666; box-shadow:inset 0 0 5px #000; }
-.vk-key[data-n="Enter"] {
-  min-width: 4.5rem;
-}
-.vk-key[data-n="␣"] {
-  flex: 0 0 10rem
-}
-.popup-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.85); /* Fond un peu plus clair qu'avant */
-  z-index: 600;
-  overflow: auto;
-  font-family: monospace;
-  padding: 2rem;
-}
-
-.popup-content {
-  background: #181818; /* Un gris très foncé, pas noir pur */
-  border: 2px solid #555; /* Bordures visibles */
-  border-radius: 10px;
-  max-width: 900px;
-  margin: 5vh auto;
-  padding: 2rem;
-  color: #eee;
-  box-shadow: 0 0 20px rgba(0,0,0,0.8); /* Ombre forte pour effet de flottement */
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .popup-content {
-    width: 90%;
-    margin: 5vh auto;
-    padding: 1.5rem;
-  }
-}
-</style>
-<script src="./libv86.js"></script>
+  <meta charset="UTF-8">
+  <title>V86</title>
+  <style>
+    html, body {
+      background: black;
+      margin: 0;
+      padding: 0;
+      color: #eee;
+      font: 12px monospace;
+      height: 100%;
+      overflow: hidden;
+    }
+    #header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 24px;
+      background: #222;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      z-index: 1000;
+    }
+    #header span { margin-right: 16px; }
+    #screen_container {
+      position: absolute;
+      top: 24px; left: 0;
+      width: 100%;
+      height: calc(100% - 24px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #screen_container canvas {
+      width: 100%;
+      height: 100%;
+    }
+    #v86_ui { position:absolute; width:0; height:0; overflow:hidden; }
+  </style>
 </head>
 <body>
-<header>
-  <div>
-    <button id="menu-btn">☰</button>
-    <button id="vk-toggle">⌨️</button>
+  <div id="header">
+    <span>Memory : <b id="mem_ram">‑ MB</b></span>
+    <span>IndexedDB : <b id="idb_usage">‑ MB</b></span>
+    <span>Net In : <b id="net_in">‑ KB</b></span>
+    <span>Net Out : <b id="net_out">‑ KB</b></span>
   </div>
-  <div>
-    <button id="start-btn" disabled>Start</button>
-    <button id="stop-btn" disabled>Stop</button>
+  <div id="screen_container"></div>
+  <div id="v86_ui">
+    <button id="start_emulation"></button>
+    <button id="run"></button>
+    <button id="pause"></button>
+    <button id="reset"></button>
+    <button id="upload"></button>
+    <button id="dump_log"></button>
+    <button id="dump_pt"></button>
+    <button id="ctrlaltdel"></button>
+    <button id="alttab"></button>
+    <button id="get_fda_image"></button>
+    <button id="get_fdb_image"></button>
+    <button id="screenshot"></button>
+    <button id="save_user_state"></button>
+    <button id="restore_user_state"></button>
+    <button id="download_fat_binary"></button>
+    <button id="fullscreen"></button>
+    <input type="file" id="disk_image_file">
+    <input type="url" id="disk_image_url">
+    <button id="load"></button>
   </div>
-</header>
-<div id="main">
-  <nav id="menu">
-    <div class="menu-header">
-      <h2>Menu</h2><button id="close-btn">×</button>
-    </div>
-    <button id="configure-vm-btn">⚙️ Configure VM</button>
-    <label for="load-usb">Load USB Image</label>
-    <input type="file" id="load-usb" accept=".img">
-    <button id="download-usb-btn" disabled>Download USB Image</button>
-    <button id="download-hda-btn" disabled>Download Updated Image</button>
-    <button id="toggle-qwerty-btn">Agnostic Keyboard Layout: Off</button>
-    <button id="tutorial-btn">📖 Tutorial</button>
-  </nav>
-  <div id="screen_container">
-    <div id="fallback"></div>
-    <canvas id="screen" width="800" height="600"></canvas>
-    <div id="loading-overlay">Loading VM…<div id="progress-bar"><div id="progress"></div></div></div>
-  </div>
-  <div id="virtual-keyboard"></div>
-</div>
-<div id="configure-popup" class="popup-overlay">
-  <div style="max-width:800px; margin:0 auto;">
-    <h1>Configure VM</h1>
-
-    <div style="margin-bottom:1rem;">
-      <label>Upload Disk Image (.img):</label><br>
-      <input type="file" id="vm-file" accept=".img">
-    </div>
-
-    <div style="margin-bottom:1rem;">
-      <label>Disk Image URL:</label><br>
-      <input type="text" id="vm-url" placeholder="http://127.0.0.1/disk.img" style="width:100%;">
-    </div>
-
-    <div style="margin-bottom:1rem;">
-      <label>Boot Options:</label><br>
-      <input type="text" id="boot-options" placeholder="Boot options (e.g. init=/bin/sh)" style="width:100%;">
-    </div>
-
-    <div style="margin-bottom:2rem;">
-      <label>Relay URL:</label><br>
-      <input type="text" id="relay-url" placeholder="Relay URL" value="wss://relay.widgetry.org/" style="width:100%;">
-    </div>
-
-    <button id="close-configure" style="margin-top:2rem; padding:0.5rem 1rem; background:#333; border:1px solid #555; border-radius:4px; color:#eee; font-size:1rem; cursor:pointer;">Close</button>
-  </div>
-</div>
-<div id="tutorial-popup" class="popup-overlay">
-  <div style="max-width:800px; margin:0 auto;">
-    <h1>How to Create a Bootable Disk from an ISO</h1>
-    <ol style="line-height:1.6;">
-      <li><b>Install QEMU</b> on your computer.</li>
-      <li><b>Create a new empty disk</b>:
-        <pre>qemu-img create -f raw disk.img 2G</pre>
-      </li>
-      <li><b>Start a virtual machine</b> using the ISO and the new disk:
-        <pre>qemu-system-x86_64 -hda disk.img -cdrom your.iso -boot d</pre>
-      </li>
-      <li><b>Inside the VM</b>, install the system onto the disk following the normal setup process.</li>
-      <li><b>Shutdown the VM</b> once the installation is complete.</li>
-      <li><b>Use the generated <code>disk.img</code></b> as your bootable hard drive image.</li>
-    </ol>
-    <button id="close-tutorial" style="margin-top:2rem; padding:0.5rem 1rem; background:#333; border:1px solid #555; border-radius:4px; color:#eee; font-size:1rem; cursor:pointer;">Close</button>
-  </div>
-</div>
-<div id="toast" style="position:fixed; bottom:1rem; left:50%; transform:translateX(-50%); background:#333; color:#0f0; padding:.7rem 1.2rem; border-radius:8px; font-family:monospace; font-size:1rem; display:none; z-index:999;">✅ Image prête à télécharger</div>
-<script>
-const V86_WASM='./v86.wasm';
-const V86_SEABIOS='./seabios.bin';
-const V86_VGABIOS='./vgabios.bin';
-window.addEventListener("DOMContentLoaded",async()=>{
-  const MAX_FILE = 2 * 1024 * 1024 * 1024;
-  const vmFile=document.getElementById("vm-file");
-  const vmUrl=document.getElementById("vm-url");
-  const startBtn=document.getElementById("start-btn");
-  const stopBtn=document.getElementById("stop-btn");
-  const fb=document.getElementById("fallback");
-
-const style = window.getComputedStyle(fb);
-const lh    = parseFloat(style.lineHeight);
-const rows  = 25;
-fb.style.height = `${rows * lh}px`;
-fb.style.overflowY = "auto";
-fb.innerHTML = "";  // on vide au cas où
-  for (let i = 0; i < rows; i++) {
-    fb.appendChild(document.createElement("div"));
-}
-if (fb.children.length === 0) {
-    for (let i = 0; i < rows; i++) {
-        fb.appendChild(document.createElement("div"));
-    }
-}
-  const loadUsb=document.getElementById("load-usb");
-  const dlUsb=document.getElementById("download-usb-btn");
-  const dlHda=document.getElementById("download-hda-btn");
-  const overlay=document.getElementById("loading-overlay");
-  const prog=document.getElementById("progress");
-  const menuBtn=document.getElementById("menu-btn");
-  const closeBtn=document.getElementById("close-btn");
-  const menu=document.getElementById("menu");
-  const vkToggle=document.getElementById("vk-toggle");
-  const vk=document.getElementById("virtual-keyboard");
-  let emulator=null;
-  let lastHdaImage=null;
-  let vmSource=null;
-  let usbBuf=null;
-  let shiftDown=false;
-  let capsLock=false;
-  let forceQwerty = true;
-  const toggleQwertyBtn = document.getElementById("toggle-qwerty-btn");
-  toggleQwertyBtn.onclick = () => {
-    forceQwerty = !forceQwerty;
-    toggleQwertyBtn.textContent = `Agnostic Keyboard Layout: ${forceQwerty ? "Off" : "On"}`;
-  };
-  let readyToStart = false;
-  function allResourcesLoaded() {
-    if (readyToStart) {
-      startBtn.disabled = false;
-    }
-  }
-  function log(m){fb.textContent+=(fb.textContent?"\n":"")+m;fb.scrollTop=fb.scrollHeight;}
-  const toast = document.getElementById("toast");
-  function showToast(message = "Success", duration = 3000) {
-    toast.textContent = "✅ " + message;
-    toast.style.display = "block";
-    setTimeout(() => {
-      toast.style.display = "none";
-    }, duration);
-  }
-  const configureBtn = document.getElementById("configure-vm-btn");
-  const configurePopup = document.getElementById("configure-popup");
-  const closeConfigure = document.getElementById("close-configure");
-  
-  configureBtn.onclick = () => {
-    configurePopup.style.display = "block";
-    menu.classList.remove("visible"); // fermer le menu hamburger en même temps
-  };
-  
-  closeConfigure.onclick = () => {
-    configurePopup.style.display = "none";
-  };
-  menuBtn.onclick=()=>menu.classList.toggle("visible");
-  closeBtn.onclick=()=>menu.classList.remove("visible");
-  document.onclick=e=>{if(!menu.contains(e.target)&&e.target!==menuBtn)menu.classList.remove("visible");};
-  vkToggle.onclick=()=>vk.classList.toggle("active");
-const keyLayout = [
-  // Rangée 1
-  [
-    {mk:41,bk:169,n:"`",s:"~"},{mk:2,bk:130,n:"1",s:"!"},{mk:3,bk:131,n:"2",s:"@"},
-    {mk:4,bk:132,n:"3",s:"#"}, {mk:5,bk:133,n:"4",s:"$"},{mk:6,bk:134,n:"5",s:"%"},
-    {mk:7,bk:135,n:"6",s:"^"},{mk:8,bk:136,n:"7",s:"&"},{mk:9,bk:137,n:"8",s:"*"},
-    {mk:10,bk:138,n:"9",s:"("},{mk:11,bk:139,n:"0",s:")"},{mk:12,bk:140,n:"-",s:"_"},
-    {mk:13,bk:141,n:"=",s:"+"},{mk:14,bk:142,n:"←"}
-  ],
-  // Rangée 2
-  [
-    {mk:15,bk:143,n:"Tab"},{mk:16,bk:144,n:"q",s:"Q"},{mk:17,bk:145,n:"w",s:"W"},
-    {mk:18,bk:146,n:"e",s:"E"},{mk:19,bk:147,n:"r",s:"R"},{mk:20,bk:148,n:"t",s:"T"},
-    {mk:21,bk:149,n:"y",s:"Y"},{mk:22,bk:150,n:"u",s:"U"},{mk:23,bk:151,n:"i",s:"I"},
-    {mk:24,bk:152,n:"o",s:"O"},{mk:25,bk:153,n:"p",s:"P"},{mk:26,bk:154,n:"[",s:"{"},
-    {mk:27,bk:155,n:"]",s:"}"},{mk:43,bk:171,n:"\\",s:"|"}
-  ],
-  // Rangée 3 (ajout de Enter à la fin)
-  [
-    {mk:58,bk:186,n:"Caps"},{mk:30,bk:158,n:"a",s:"A"},{mk:31,bk:159,n:"s",s:"S"},
-    {mk:32,bk:160,n:"d",s:"D"},{mk:33,bk:161,n:"f",s:"F"},{mk:34,bk:162,n:"g",s:"G"},
-    {mk:35,bk:163,n:"h",s:"H"},{mk:36,bk:164,n:"j",s:"J"},{mk:37,bk:165,n:"k",s:"K"},
-    {mk:38,bk:166,n:"l",s:"L"},{mk:39,bk:167,n:";",s:":"},{mk:40,bk:168,n:"'",s:'"'},
-    // Touche Entrée
-    {mk:28,bk:156,n:"Enter"}
-  ],
-  // Rangée 4
-  [
-    {mk:42,bk:170,n:"Shift"},{mk:44,bk:172,n:"z",s:"Z"},{mk:45,bk:173,n:"x",s:"X"},
-    {mk:46,bk:174,n:"c",s:"C"},{mk:47,bk:175,n:"v",s:"V"},{mk:48,bk:176,n:"b",s:"B"},
-    {mk:49,bk:177,n:"n",s:"N"},{mk:50,bk:178,n:"m",s:"M"},{mk:51,bk:179,n:",",s:"<"},
-    {mk:52,bk:180,n:".",s:">"},{mk:53,bk:181,n:"/",s:"?"},{mk:54,bk:182,n:"Shift"}
-  ],
-  // Rangée 5
-  [
-    { mk: 29, bk: 157, n: "Ctrl" },
-    { mk: 56, bk: 184, n: "Alt" },
-    // Touche Espace
-    { mk: 57, bk: 185, n: "␣" },
-    // Optionnel : AltGr
-    { mk: 100, bk: 100, n: "AltGr" }
-  ]
-];
-const codeToScancodes = {
-  Backquote:    [41, 169],
-  Digit1:       [2,  130],
-  Digit2:       [3,  131],
-  Digit3:       [4,  132],
-  Digit4:       [5,  133],
-  Digit5:       [6,  134],
-  Digit6:       [7,  135],
-  Digit7:       [8,  136],
-  Digit8:       [9,  137],
-  Digit9:       [10, 138],
-  Digit0:       [11, 139],
-  Minus:        [12, 140],
-  Equal:        [13, 141],
-  Backspace:    [14, 142],
-  Tab:          [15, 143],
-
-  KeyQ:         [16, 144],
-  KeyW:         [17, 145],
-  KeyE:         [18, 146],
-  KeyR:         [19, 147],
-  KeyT:         [20, 148],
-  KeyY:         [21, 149],
-  KeyU:         [22, 150],
-  KeyI:         [23, 151],
-  KeyO:         [24, 152],
-  KeyP:         [25, 153],
-
-  BracketLeft:  [26, 154],
-  BracketRight: [27, 155],
-  Backslash:    [43, 171],
-
-  Enter:        [28, 156],
-  ControlLeft:  [29, 157],
-  KeyA:         [30, 158],
-  KeyS:         [31, 159],
-  KeyD:         [32, 160],
-  KeyF:         [33, 161],
-  KeyG:         [34, 162],
-  KeyH:         [35, 163],
-  KeyJ:         [36, 164],
-  KeyK:         [37, 165],
-  KeyL:         [38, 166],
-  Semicolon:    [39, 167],
-  Quote:        [40, 168],
-
-  ShiftLeft:    [42, 170],
-  ShiftRight:   [54, 182],
-
-  KeyZ:         [44, 172],
-  KeyX:         [45, 173],
-  KeyC:         [46, 174],
-  KeyV:         [47, 175],
-  KeyB:         [48, 176],
-  KeyN:         [49, 177],
-  KeyM:         [50, 178],
-  Comma:        [51, 179],
-  Period:       [52, 180],
-  Slash:        [53, 181],
-
-  AltLeft:      [56, 184],
-  AltRight:     [100,100],  // AltGr
-
-  Space:        [57, 185],
-  CapsLock:     [58, 186]
-};
-
-  function updateVK(){
-    vk.querySelectorAll(".vk-key").forEach(b=>{
-      const n=b.dataset.n;
-      const s=b.dataset.s;
-      b.classList.toggle("active",n==="Caps"?capsLock:(n==="Shift"&&shiftDown));
-      let lbl=n;
-      if(s){
-        if(n.length===1&&/[a-z]/i.test(n))lbl=(capsLock^shiftDown)?n.toUpperCase():n.toLowerCase();
-        else lbl=(shiftDown||capsLock)?s:n;
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+  <script src="build/v86_all.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      let netIn = 0, netOut = 0;
+      // Fetch instrumentation
+      const origFetch = window.fetch;
+      window.fetch = async function(...args) {
+        if (args[1]?.body) {
+          const b = args[1].body;
+          netOut += typeof b === "string" ? b.length : (b.byteLength || 0);
+        }
+        const response = await origFetch.apply(this, args);
+        response.clone().arrayBuffer().then(buf => netIn += buf.byteLength).catch(() => {});
+        return response;
+      };
+      // XHR instrumentation
+      const origXHRSend = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.send = function(body) {
+        if (body) netOut += typeof body === "string" ? body.length : (body.byteLength || body.size || 0);
+        this.addEventListener('loadend', () => {
+          const r = this.response;
+          if (r) netIn += typeof r === "string" ? r.length : (r.byteLength || r.size || 0);
+        });
+        return origXHRSend.apply(this, arguments);
+      };
+      // WebSocket instrumentation
+      const OrigWS = window.WebSocket;
+      window.WebSocket = function(url, protocols) {
+        const ws = protocols ? new OrigWS(url, protocols) : new OrigWS(url);
+        const sendOrig = ws.send;
+        ws.send = function(data) {
+          let size = 0;
+          if (typeof data === 'string') size = new TextEncoder().encode(data).length;
+          else if (data instanceof Blob) size = data.size;
+          else if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) size = data.byteLength;
+          netOut += size;
+          return sendOrig.call(this, data);
+        };
+        ws.addEventListener('message', event => {
+          const d = event.data;
+          let size = 0;
+          if (typeof d === 'string') size = new TextEncoder().encode(d).length;
+          else if (d instanceof Blob) size = d.size;
+          else if (d instanceof ArrayBuffer || ArrayBuffer.isView(d)) size = d.byteLength;
+          netIn += size;
+        });
+        return ws;
+      };
+      Object.assign(window.WebSocket, OrigWS);
+      window.WebSocket.prototype = OrigWS.prototype;
+      // Monitoring
+      function updateStats() {
+        const toMB = bytes => (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        const mem = performance.memory;
+        if (mem) {
+          const used = mem.usedJSHeapSize;
+          const limit = mem.jsHeapSizeLimit || 0;
+          document.getElementById('mem_ram').textContent = `${(used / 1048576).toFixed(1)} MB / ${(limit / 1048576).toFixed(1)} MB`;
+        }
+        navigator.storage?.estimate?.().then(e => {
+          document.getElementById('idb_usage').textContent = toMB(e.usage || 0);
+        });
+        document.getElementById('net_in').textContent = (netIn / 1024).toFixed(1) + ' KB';
+        document.getElementById('net_out').textContent = (netOut / 1024).toFixed(1) + ' KB';
       }
-      b.textContent=lbl;
+      setInterval(updateStats, 1000);
+      updateStats();
+      // Initialize swap DB
+      indexedDB.open("v86_swap", 1).onupgradeneeded = e => {
+        e.target.result.createObjectStore("pages");
+      };
+      // Launch emulator
+      new V86({
+        wasm_path: "build/v86.wasm",
+        bios: { url: "build/bios/seabios.bin" },
+        vga_bios: { url: "build/bios/vgabios.bin" },
+        memory_size: 268435456,
+        cdrom: { url: "slitaz-4.0-xorg-light-isohybrid.iso" },
+        screen_container: document.getElementById("screen_container"),
+        autostart: true,
+        swap_async: true,
+        swap_aggressive: true,
+        use_page_cache: true,
+        page_cache_size: 16,
+        disable_memory_cow: true,
+        network_relay_url: "wss://relay.widgetry.org",
+        network_backend: "socket",
+        pagefile_read(i, callback) {
+          indexedDB.open("v86_swap").onsuccess = e => {
+            const db = e.target.result;
+            const tx = db.transaction("pages", "readonly");
+            const store = tx.objectStore("pages");
+            store.get(i).onsuccess = o => {
+              const res = o.target.result;
+              callback(res ? pako.inflate(new Uint8Array(res)) : new Uint8Array(4096));
+            };
+          };
+        },
+        pagefile_write(i, data, callback) {
+          indexedDB.open("v86_swap").onsuccess = e => {
+            const db = e.target.result;
+            const tx = db.transaction("pages", "readwrite");
+            const store = tx.objectStore("pages");
+            store.put(pako.deflate(data), i).onsuccess = () => callback();
+          };
+        }
+      });
+      // Bind UI buttons
+      "run reset dump_log ctrlaltdel alttab fullscreen dump_pt get_fda_image get_fdb_image screenshot save_user_state restore_user_state download_fat_binary load"
+        .split(' ')
+        .forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.onclick = () => {};
+        });
     });
-  }
-  keyLayout.forEach(row=>{
-    const r=document.createElement("div");
-    r.className="vk-row";
-    row.forEach(k=>{
-      const b=document.createElement("div");
-      b.className="vk-key";
-      b.dataset.make=k.mk;
-      b.dataset.break=k.bk;
-      b.dataset.n=k.n;
-      if(k.s)b.dataset.s=k.s;
-      r.appendChild(b);
-    });
-    vk.appendChild(r);
-  });
-  updateVK();
-
-const flatLayout   = keyLayout.flat();
-const SHIFT_MK     = 42,   SHIFT_BK = 170;
-const autoShifted  = new Set();
-
-function getKeyInfo(e) {
-  // Mode Forçage QWERTY
-  if (forceQwerty) {
-    const sc = codeToScancodes[e.code];
-    if (sc) {
-      return { make: sc[0], break: sc[1], needShift: false };
-    }
-    return null;
-  }
-
-  // 1) Recherche caractère imprimable
-  let keyObj = flatLayout.find(k => k.n === e.key);
-  let needShift = false;
-
-  if (!keyObj) {
-    keyObj = flatLayout.find(k => k.s === e.key);
-    if (keyObj) needShift = true;
-  }
-
-  if (keyObj) {
-    return { make: keyObj.mk, break: keyObj.bk, needShift };
-  }
-
-  // 2) Fallback touches de contrôle (Tab, Enter…)
-  const sc = codeToScancodes[e.code];
-  if (sc) {
-    return { make: sc[0], break: sc[1], needShift: false };
-  }
-
-  // 3) Inconnu
-  return null;
-}
-
-// keydown
-document.addEventListener("keydown", e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.repeat) return;              // ignore répétitions
-  const info = getKeyInfo(e);
-  if (!info) return;
-
-  e.preventDefault();
-  e.stopImmediatePropagation();
-
-  // 1) simule Shift si besoin
-  if (info.needShift && !e.getModifierState("Shift")) {
-    emulator && emulator.keyboard_send_scancodes([SHIFT_MK]);
-    autoShifted.add(info.make);
-  }
-
-  // 2) envoie make
-  emulator && emulator.keyboard_send_scancodes([info.make]);
-
-  // 3) highlight
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
-  if (btn) btn.classList.add("pressed");
-}, true);
-
-
-// keyup
-document.addEventListener("keyup", e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  const info = getKeyInfo(e);
-  if (!info) return;
-
-  e.preventDefault();
-  e.stopImmediatePropagation();
-
-  // 1) envoie break
-  emulator && emulator.keyboard_send_scancodes([info.break]);
-
-  // 2) dé-highlight
-  const btn = vk.querySelector(`.vk-key[data-make="${info.make}"]`);
-  if (btn) btn.classList.remove("pressed");
-
-  // 3) relâche Shift simulé
-  if (info.needShift && autoShifted.has(info.make)) {
-    emulator && emulator.keyboard_send_scancodes([SHIFT_BK]);
-    autoShifted.delete(info.make);
-  }
-}, true);
-
-  vk.addEventListener("mousedown",e=>{
-    const b=e.target;
-    if(!b.classList.contains("vk-key"))return;
-    const mk=+b.dataset.make;
-    const bk=+b.dataset.break;
-    const n=b.dataset.n;
-    if(n==="Shift"){
-      if(capsLock){
-        emulator&&emulator.keyboard_send_scancodes([58,186]);
-        capsLock=false;
-      }
-      if(shiftDown){
-        emulator&&emulator.keyboard_send_scancodes([shiftBreak]);
-        shiftDown=false;
-        updateVK();
-      } else {
-        shiftDown=true;
-        shiftMake=mk;
-        shiftBreak=bk;
-        updateVK();
-        emulator&&emulator.keyboard_send_scancodes([mk,bk]);
-      }
-      return;
-    }
-    if(n==="Caps"){
-      if(shiftDown){
-        emulator&&emulator.keyboard_send_scancodes([shiftBreak]);
-        shiftDown=false;
-      }
-      emulator&&emulator.keyboard_send_scancodes([mk,bk]);
-      capsLock=!capsLock;
-      updateVK();
-      return;
-    }
-    updateVK();
-    emulator&&emulator.keyboard_send_scancodes([mk,bk]);
-    if(shiftDown){
-      emulator&&emulator.keyboard_send_scancodes([shiftBreak]);
-      shiftDown=false;
-      updateVK();
-    }
-
-if (b.classList.contains("vk-key")) {
-  b.classList.add("pressed");
-  setTimeout(() => {
-    b.classList.remove("pressed");
-  }, 150); // 150 ms suffit pour un effet de "flash"
-}
-
-  });
-  vmFile.onchange=e=>{
-    const f=e.target.files[0];
-    if(!f)return;
-    if (f.size > MAX_FILE) {
-        alert("❌ File is too big, max : 2 Go.");
-        e.target.value = ""; 
-        return;
-    }
-    vmSource = { url: URL.createObjectURL(f), async: true };
-    readyToStart = true;
-    allResourcesLoaded(); 
-    vmUrl.value = "";
-  };
-  vmUrl.oninput = () => {
-    const u = vmUrl.value.trim();
-    if (u) {
-      vmSource       = { url: u, async: true };
-      startBtn.disabled = false;
-      vmFile.value   = "";
-    } else {
-      vmSource       = null;
-      startBtn.disabled = true;
-    }
-  };
-
-vmUrl.onchange = async () => {
-  const raw = vmUrl.value.trim();
-
-  if (!raw) {
-    vmSource = null;
-    startBtn.disabled = true;
-    return;
-  }
-
-  let parsed;
-  try {
-    parsed = new URL(raw, window.location.href);
-  } catch (e) {
-    alert("URL invalide – veuillez vérifier la saisie.");
-    vmUrl.value = "";
-    vmSource = null;
-    startBtn.disabled = true;
-    return;
-  }
-
-  if (parsed.origin === window.location.origin) {
-    vmSource = { url: parsed.toString(), async: true };
-    startBtn.disabled = false;
-    vmFile.value = "";
-    return;
-  }
-
-  try {
-    const response = await fetch(parsed.toString(), { method: "HEAD" });
-    if (!response.ok) {
-      throw new Error("HTTP " + response.status);
-    }
-    // Optionnal
-    const acao = response.headers.get("access-control-allow-origin");
-    if (!acao || (acao !== "*" && !acao.includes(window.location.origin))) {
-      throw new Error("CORS non autorisé");
-    }
-    // All good
-    vmSource = { url: parsed.toString(), async: true };
-    readyToStart = true;
-    allResourcesLoaded(); 
-    vmFile.value = "";
-  } catch (err) {
-    console.warn("Validation CORS échouée :", err);
-    alert("Impossible de charger cette URL (CORS non autorisé).\nVeuillez fournir une URL locale (même origine).");
-    vmUrl.value = "";
-    vmSource = null;
-    startBtn.disabled = true;
-  }
-};
-
-  loadUsb.onchange=e=>{
-    const f=e.target.files[0];
-    if(!f)return;
-    if(f.size>MAX_FILE){e.target.value="";return;}
-    const r=new FileReader();
-    r.onload=()=>{usbBuf=r.result;dlUsb.disabled=false;};
-    r.readAsArrayBuffer(f);
-  };
-  startBtn.onclick=()=>{
-    if(!vmSource)return;
-    if(emulator){emulator.stop();emulator.destroy();emulator=null;}
-  let needed = 128 * 1024 * 1024;
-  if (vmSource.buffer) {
-    needed = vmSource.buffer.byteLength + 32 * 1024 * 1024;
-  }
-    startBtn.disabled=true;
-    fb.innerHTML = "";
-    for (let i = 0; i < rows; i++) {
-      fb.appendChild(document.createElement("div"));
-    }
-    overlay.style.display="flex";
-    prog.style.width="0%";
-    const relayUrl = document.getElementById("relay-url").value.trim();
-    const hda = { url: vmSource.url, async: true };
-    const bootOptions = document.getElementById("boot-options").value.trim();
-    requestAnimationFrame(() => {
-    emulator=new V86({
-      wasm_path:V86_WASM,
-      bios:{url:V86_SEABIOS},
-      vga_bios:{url:V86_VGABIOS},
-      memory_size: needed,
-      vga_memory_size:16*1024*1024,
-      hda,
-      ...(usbBuf&&{hdb:{buffer:usbBuf,size:usbBuf.byteLength}}),
-      network_relay_url: relayUrl,
-      serial_container: fb || document.createElement("div"),
-      screen_container:document.getElementById("screen_container"),
-      screen:{canvas:document.getElementById("screen")},
-      autostart:true,
-      ...(bootOptions && { cmdline: bootOptions }),
-      keyboard: { capture: false }
-    });
-    stopBtn.disabled=false;
-    loadUsb.disabled=true;
-    document.querySelector('label[for="load-usb"]').classList.add('disabled');
-    emulator.add_listener("download-progress", e => {
-     if (e.total && e.loaded) {
-       prog.style.width = Math.floor(e.loaded / e.total * 100) + "%";
-     }
-     if (e.loaded === e.total) {
-       allResourcesLoaded();
-     }
-    });
-    emulator.add_listener("emulator-ready",()=>{overlay.style.display="none";dlHda.disabled=true;log("🎉 VM ready");});
-    emulator.add_listener("emulator-error",()=>{overlay.style.display="none";startBtn.disabled=false;dlHda.disabled=true;});
-    emulator.add_listener("emulator-stopped", () => {
-     stopBtn.disabled    = true;
-     startBtn.disabled   = false;
-     overlay.style.display= "none";
-     lastHdaImage        = emulator.disk_images.hda;
-     dlHda.disabled      = false;
-     emulator.destroy();
-     emulator = null;
-     showToast("Updated image ready to be downloaded");
-     log("💤 VM stopped.\nWaiting for your actions…");
-    });
-  });
-  };
-  stopBtn.onclick=()=>{
-    if(emulator){
-      emulator.stop();
-      emulator.destroy();
-      emulator=null;
-      stopBtn.disabled=true;
-      startBtn.disabled=false;
-      dlHda.disabled=false;
-      loadUsb.disabled = false;
-      document.querySelector('label[for="load-usb"]').classList.remove('disabled');
-      overlay.style.display="none";
-      fb.textContent="";
-    }
-  };
-  dlUsb.onclick=()=>{if(!emulator?.disk_images?.hdb)return;const img=emulator.disk_images.hdb;img.get_buffer(b=>{const blob=new Blob([b],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="usb.img";a.click();});};
-  dlHda.onclick = () => {
-    const img = emulator?.disk_images?.hda || lastHdaImage;
-    if (!img) return;
-    img.get_buffer(b => {
-      const blob = new Blob([b], { type: "application/octet-stream" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "hda-updated.img";
-      a.click();
-    });
-  };
-  log("⏳ Waiting for your actions…");
-});
-const tutorialBtn = document.getElementById("tutorial-btn");
-const tutorialPopup = document.getElementById("tutorial-popup");
-const closeTutorial = document.getElementById("close-tutorial");
-
-tutorialBtn.onclick = () => {
-  tutorialPopup.style.display = "block";
-};
-
-closeTutorial.onclick = () => {
-  tutorialPopup.style.display = "none";
-};
-</script>
+  </script>
 </body>
 </html>
+
