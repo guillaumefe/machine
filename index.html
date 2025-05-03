@@ -18,6 +18,25 @@
     #screen_container { position:absolute; top:24px; left:0; width: 100vw; height:calc(100% - 24px);display: flex; }
     #screen { display: none; }
     #screen_container canvas {cursor:none; max-width:100%;max-height:100%;width:auto;height:auto;display:block;}
+    #mem_wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    #mem_tooltip {
+      position: absolute;
+      top: 1.5em; left: 0;
+      background: rgba(50,50,50,0.9);
+      color: #eee;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: pre;
+      font-size: 10px;
+      display: none;
+      z-index: 1001;
+    }
+    #mem_wrapper:hover #mem_tooltip {
+      display: block;
+    }
   `;
 
   document.head.appendChild(style);
@@ -28,7 +47,10 @@
   const header = document.createElement("div");
   header.id = "header";
   header.innerHTML = `
-    <span>Memory : <b id="mem_ram">‑ MB</b></span>
+    <span id="mem_wrapper">
+      Memory : <b id="mem_ram">- MB</b>
+      <div id="mem_tooltip">Loading…</div>
+    </span>
     <span>Net In : <b id="net_in">‑ KB</b></span>
     <span>Net Out : <b id="net_out">‑ KB</b></span>
   `;
@@ -166,7 +188,7 @@
     }
   
     document.getElementById('mem_ram').textContent = toMB(totalBytes);
-    document.getElementById('mem_ram').title = details.join('\n');
+    document.getElementById('mem_tooltip').textContent = details.join('\n');
   
     document.getElementById('net_in').textContent  = (netIn  / 1024).toFixed(1) + ' KB';
     document.getElementById('net_out').textContent = (netOut / 1024).toFixed(1) + ' KB';
