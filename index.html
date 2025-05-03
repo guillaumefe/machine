@@ -172,10 +172,10 @@
            
              // 2.2 WASM (V86)
              let wasmMem = 0;
-             const ramDev = emulator?.bus?.devices?.ram || emulator?.bus?.devices?.memory;
-             if (ramDev && ramDev.memory) {
-               // selon le navigateur, .buffer existe ou pas
-               const buf = ramDev.memory.buffer || ramDev.memory;
+              console.log("WASM memory (MB): " + ( / 1024 / 1024).toFixed(2));
+             const ramDev = emulator.v86?.cpu?.mem8?.buffer;
+             if (ramDev) {
+               const buf = ramDev.buffer;
                if (buf && typeof buf.byteLength === "number") {
                  wasmMem = buf.byteLength;
                }
@@ -249,9 +249,6 @@
              emulator.add_listener("emulator-ready", () => {
                updateStats();
                setInterval(updateStats, 200);
-console.log("WASM memory (MB): " + (emulator.v86.cpu.mem8.buffer.byteLength / 1024 / 1024).toFixed(2));
-
-
              });
          
          
