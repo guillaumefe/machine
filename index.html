@@ -14,6 +14,7 @@
          
            const MEMORY_SIZE = 256 * 1024 * 1024; // 256 MiB
            let emulator;
+           let fsWriteBytes = 0;
          
            // 1. Insérer style global
            const style = document.createElement("style");
@@ -214,14 +215,9 @@
              }
              
              // calcul de l’espace réellement écrit dans les pages
-             const usedBytes = (()=>{
-               let cnt=0;
-               for(let i=0;i<dirtyPages.length;i++) cnt += dirtyPages[i];
-               return cnt * pageSize;
-             })();
-             const freeBytes = Math.max(0, MEMORY_SIZE - usedBytes);
-             details.push(`WASM used: ${toMB(usedBytes)}`);
-             details.push(`WASM free: ${toMB(freeBytes)}`);
+             const freeBytes = Math.max(0, MEMORY_SIZE - fsWriteBytes);
+             details.push(`FS used:  ${toMB(fsWriteBytes)}`);
+             details.push(`FS free:  ${toMB(freeBytes)}`);
              
              // mise à jour de l’affichage
              
@@ -269,13 +265,15 @@
    
              // ── Patch des écritures mémoire ──
              emulator.add_listener("emulator-ready", () => {
-               const cpu = emulator.v86.cpu;
-               const origWrite = cpu.write_mem8 || cpu.write8;
-               cpu.write_mem8 = function(addr, value) {
-                 dirtyPages[addr >> 12] = 1;  // marque la page
-                 return origWrite.call(this, addr, value);
+               const FS = emulator.v86.module.FS;
+               const origFSwrite = FS.write;
+               FS.write = function(stream, buffer, offset, length, position, canOwn) {
+                 fsWriteBytes += length;
+                 return origFSwrite.call(this,
+                   stream, buffer, offset, length, position, canOwn
+                 );
                };
-             });              
+             });
            }
          
            launchEmulator();
