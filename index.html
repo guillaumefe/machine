@@ -51,13 +51,25 @@
   // Instrumentation réseau
   (function(){
     const origFetch = window.fetch;
-    window.fetch = async(...args) => {
-      if(args[1]?.body) {
+    window.fetch = async (...args) => {
+      if (args[1]?.body) {
         const b = args[1].body;
         netOut += typeof b === 'string' ? b.length : (b.byteLength || 0);
       }
       const resp = await origFetch.apply(this, args);
-      resp.clone().arrayBuffer().then(buf => netIn += buf.byteLength).catch(()=>{});
+    
+      resp.clone().arrayBuffer().then(() => {
+        const entries = performance.getEntriesByType("resource")
+          .filter(e => e.name === resp.url);
+        if (entries.length) {
+          const last = entries[entries.length - 1];
+          // On compte uniquement si transferSize > 0 (réseau)
+          if (last.transferSize > 0) {
+            netIn += last.transferSize;
+          }
+        }
+      }).catch(()=>{});
+    
       return resp;
     };
 
@@ -65,8 +77,14 @@
     XMLHttpRequest.prototype.send = function(body) {
       if(body) netOut += typeof body === 'string' ? body.length : (body.byteLength || 0);
       this.addEventListener('loadend', () => {
-        const r = this.response;
-        if(r) netIn += typeof r === 'string' ? r.length : (r.byteLength || 0);
+        const entries = performance.getEntriesByType("resource")
+          .filter(e => e.name === this.responseURL);
+        if (entries.length) {
+          const last = entries[entries.length - 1];
+          if (last.transferSize > 0) {
+            netIn += last.transferSize;
+          }
+        }
       });
       return origSend.apply(this, arguments);
     };
