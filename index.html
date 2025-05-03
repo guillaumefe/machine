@@ -249,7 +249,7 @@
              emulator.add_listener("emulator-ready", () => {
                updateStats();
                setInterval(updateStats, 200);
-console.log("WASM buffer size:", emulator.cpu.mem8.buffer.byteLength);
+console.log(Object.keys(emulator.v86.cpu));
 
              });
          
