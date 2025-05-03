@@ -263,17 +263,25 @@
              emulator = new V86(v86Config);
              setInterval(updateStats, 500);
    
-             // ── Patch des écritures mémoire ──
              emulator.add_listener("emulator-ready", () => {
-               const FS = emulator.v86.module.FS;
-               const origFSwrite = FS.write;
-               FS.write = function(stream, buffer, offset, length, position, canOwn) {
-                 fsWriteBytes += length;
-                 return origFSwrite.call(this,
-                   stream, buffer, offset, length, position, canOwn
-                 );
+               // boucle tant que module.FS n’existe pas
+               const installFSHook = () => {
+                 const FS = emulator.v86.module?.FS;
+                 if (!FS) {
+                   return setTimeout(installFSHook, 100);
+                 }
+                 // patch de write pour compter les octets écrits dans le FS
+                 const origFSwrite = FS.write;
+                 FS.write = function(stream, buffer, offset, length, position, canOwn) {
+                   fsWriteBytes += length;
+                   return origFSwrite.call(this,
+                     stream, buffer, offset, length, position, canOwn
+                   );
+                 };
                };
+               installFSHook();
              });
+              
            }
          
            launchEmulator();
