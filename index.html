@@ -279,10 +279,11 @@
                // On cherche la ligne “Mem:” de la commande free
                if (line.startsWith("Mem:")) {
                  // free -b affiche : Mem: TOTAL USED FREE ...
-                 const parts = line.split(/\s+/);
-                 const freeBytes = parseInt(parts[3], 10);
-                 document.getElementById("mem_left")
-                         .textContent = (freeBytes/1024/1024).toFixed(1) + " MB";
+     const parts = line.split(/\s+/);
+     // parts[6] = AVAILABLE (mémoire utilisable)
+     const availableBytes = parseInt(parts[6], 10);
+     document.getElementById("mem_left")
+             .textContent = (availableBytes/1024/1024).toFixed(1) + " MB";
                }
              }
            });
