@@ -249,9 +249,10 @@
              emulator.add_listener("emulator-ready", () => {
                updateStats();
                setInterval(updateStats, 200);
-console.log("RAM DEV:", emulator.bus.devices);
-console.log("WASM RAM BUFFER:", emulator.v86?.memory?.mem8?.buffer?.byteLength);
-                console.log(Object.keys(emulator)); 
+console.log(Object.keys(emulator.v86));
+console.log(emulator.v86.memory);
+                console.log(emulator.v86.memory?.mem8?.buffer?.byteLength);
+                console.log(emulator.v86.memory?.buffer?.byteLength);
 
              });
          
