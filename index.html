@@ -144,6 +144,11 @@
              window.WebSocket.prototype = OrigWS.prototype;
            })();
          
+            // ── Instrumentation mémoire (page-dirty) ──
+            const pageSize   = 4096;
+            const totalPages = MEMORY_SIZE / pageSize;
+            const dirtyPages = new Uint8Array(totalPages);  // 0 = clean, 1 = dirty
+            
            // 6. Monitoring immédiat
            async function updateStats() {
              const toMB = b => (b / 1024 / 1024).toFixed(1) + ' MB';
@@ -208,9 +213,15 @@
                details.push(`Estimate breakdown: ${toMB(jsHeap)}+${toMB(wasmMem)}+${toMB(canvasMem)}`);
              }
              
-             // calcul de l’espace libre
-             const freeBytes = MEMORY_SIZE - wasmMem;
-             details.push(`Free WASM mem: ${toMB(freeBytes)}`);
+             // calcul de l’espace réellement écrit dans les pages
+             const usedBytes = (()=>{
+               let cnt=0;
+               for(let i=0;i<dirtyPages.length;i++) cnt += dirtyPages[i];
+               return cnt * pageSize;
+             })();
+             const freeBytes = Math.max(0, MEMORY_SIZE - usedBytes);
+             details.push(`WASM used: ${toMB(usedBytes)}`);
+             details.push(`WASM free: ${toMB(freeBytes)}`);
              
              // mise à jour de l’affichage
              
@@ -255,10 +266,16 @@
            
              emulator = new V86(v86Config);
              setInterval(updateStats, 500);
-            emulator.add_listener("emulator-ready", () => {
-               console.log("emulator.get_memory_size");
-            });
-
+   
+             // ── Patch des écritures mémoire ──
+             emulator.add_listener("emulator-ready", () => {
+               const cpu = emulator.v86.cpu;
+               const origWrite = cpu.write_mem8 || cpu.write8;
+               cpu.write_mem8 = function(addr, value) {
+                 dirtyPages[addr >> 12] = 1;  // marque la page
+                 return origWrite.call(this, addr, value);
+               };
+             });              
            }
          
            launchEmulator();
