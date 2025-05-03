@@ -9,6 +9,9 @@
   const ISO = "Core-current.iso";
   //const ISO = "slitaz-4.0-xorg-light-isohybrid.iso";
 
+  const MEMORY_SIZE = 256 * 1024 * 1024; // 256 MiB
+  let emulator;
+
   // 1. Insérer style global
   const style = document.createElement("style");
   style.textContent = `
@@ -51,6 +54,7 @@
       Memory : <b id="mem_ram">- MB</b>
       <div id="mem_tooltip">Loading…</div>
     </span>
+    <span>Max left : <b id="mem_left">- MB</b></span>
     <span>Net In : <b id="net_in">‑ KB</b></span>
     <span>Net Out : <b id="net_out">‑ KB</b></span>
   `;
@@ -165,7 +169,7 @@
   
     // 2.2 WASM (V86)
     let wasmMem = 0;
-    if (window.emulator?.bus?.devices?.ram) {
+    if (emulator?.bus?.devices?.ram) {
       wasmMem = emulator.bus.devices.ram.memory.buffer.byteLength;
       details.push(`WASM (V86): ${toMB(wasmMem)}`);
     }
@@ -186,9 +190,17 @@
       // on peut aussi afficher notre own breakdown en plus
       details.push(`Estimate breakdown: ${toMB(jsHeap)}+${toMB(wasmMem)}+${toMB(canvasMem)}`);
     }
-  
+    
+    // calcul de l’espace libre
+    const freeBytes = MEMORY_SIZE - wasmMem;
+    details.push(`Free WASM mem: ${toMB(freeBytes)}`);
+    
+    // mise à jour de l’affichage
+    
     document.getElementById('mem_ram').textContent = toMB(totalBytes);
     document.getElementById('mem_tooltip').textContent = details.join('\n');
+
+    document.getElementById('mem_left').textContent = toMB(freeBytes);
   
     document.getElementById('net_in').textContent  = (netIn  / 1024).toFixed(1) + ' KB';
     document.getElementById('net_out').textContent = (netOut / 1024).toFixed(1) + ' KB';
@@ -211,10 +223,8 @@
   async function launchEmulator() {
     await loadScript("build/pako.min.js");
     await loadScript("build/libv86.js");
-
-    const MEMORY_SIZE = 256 * 1024 * 1024;
-
-    new V86({
+    
+    emulator = new V86({
       wasm_path: "build/v86.wasm",
       bios: { url: "build/bios/seabios.bin" },
       vga_bios: { url: "build/bios/vgabios.bin" },
