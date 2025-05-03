@@ -221,6 +221,10 @@
   async function launchEmulator() {
     await loadScript("build/pako.min.js");
     await loadScript("build/libv86.js");
+  
+    const hasNativeMemoryAPI =
+      typeof performance.measureUserAgentSpecificMemory === "function" &&
+      performance.memory;
     
     const v86Config = {
       wasm_path: "build/v86.wasm",
