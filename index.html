@@ -166,13 +166,23 @@
            
              // 2) Sinon (ou en plus), estimation manuelle :
              // 2.1 Heap JS
-             const mem = performance.memory;
-             const jsHeap = mem ? mem.usedJSHeapSize : 0;
+            let jsHeap = 0;
+            if ('memory' in performance && performance.memory && typeof performance.memory.usedJSHeapSize === "number") {
+                jsHeap = performance.memory.usedJSHeapSize;
+            }
              details.push(`JS heap: ${toMB(jsHeap)}`);
            
-             // 2.2 WASM (V86)
-             let wasmMem = 0;
-             const ramDev = emulator.v86?.cpu?.mem8?.buffer;
+             // 2.2 WASM (V86
+            let wasmMem = 0;
+            let ramDev;
+            try {
+                ramDev = emulator?.v86?.cpu?.mem8;
+                if (ramDev?.buffer) {
+                    wasmMem = ramDev.buffer.byteLength;
+                }
+            } catch (e) {
+                wasmMem = 0;
+            }
              if (ramDev) {
                const buf = ramDev.buffer;
                if (buf && typeof buf.byteLength === "number") {
@@ -244,13 +254,7 @@
              };
            
              emulator = new V86(v86Config);
-             
-             emulator.add_listener("emulator-ready", () => {
-               updateStats();
-               setInterval(updateStats, 200);
-             });
-         
-         
+             setInterval(updateStats, 500);         
            }
          
            launchEmulator();
