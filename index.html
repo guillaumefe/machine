@@ -205,8 +205,6 @@
     document.getElementById('net_in').textContent  = (netIn  / 1024).toFixed(1) + ' KB';
     document.getElementById('net_out').textContent = (netOut / 1024).toFixed(1) + ' KB';
   }
-  setInterval(updateStats, 200);
-  updateStats();
 
   // 7. Charger les scripts externes puis lancer l’émulateur
   function loadScript(src) {
@@ -238,6 +236,13 @@
     });
   }
 
+  emulator.add_listener("emulator-ready", () => {
+    // on déclenche tout de suite une première mesure
+    updateStats();
+    // puis on boucle toutes les 200 ms
+    setInterval(updateStats, 200);
+  });
+  
   launchEmulator();
 
 })();
