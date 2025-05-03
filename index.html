@@ -252,6 +252,9 @@
                vga_bios: { url: "build/bios/vgabios.bin" },
                memory_size: MEMORY_SIZE,
                cdrom: { url: ISO },
+               cmdline: "console=ttyS0,115200n8",
+               serial_container: screenContainer,
+               serial_read_only: true,
                screen_container: screenContainer,
                autostart: true,
                disable_memory_cow: true,
@@ -260,10 +263,7 @@
                network_backend: "socket",
              };
            
-              window.emulator = emulator = new V86(Object.assign(v86Config, {
-                serial_container: screenContainer,
-                serial_read_only: true
-              }));
+
               
              setInterval(updateStats, 500);
    
