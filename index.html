@@ -200,7 +200,7 @@
              }
              
              // calcul de l’espace libre
-             const freeBytes = MEMORY_SIZE - totalBytes;
+             const freeBytes = MEMORY_SIZE - wasmMem;
              details.push(`Free WASM mem: ${toMB(freeBytes)}`);
              
              // mise à jour de l’affichage
