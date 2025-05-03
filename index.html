@@ -222,7 +222,7 @@
     await loadScript("build/pako.min.js");
     await loadScript("build/libv86.js");
     
-    emulator = new V86({
+    const v86Config = {
       wasm_path: "build/v86.wasm",
       bios: { url: "build/bios/seabios.bin" },
       vga_bios: { url: "build/bios/vgabios.bin" },
@@ -234,7 +234,14 @@
       network_relay_url: "wss://relay.widgetry.org",
       network_backend: "socket",
     });
-
+    
+    if (!hasNativeMemoryAPI) {
+      v86Config.disable_memory_cow = false;
+      v86Config.worker = false;
+    }
+  
+    emulator = new V86(v86Config);
+    
     emulator.add_listener("emulator-ready", () => {
       // on déclenche tout de suite une première mesure
       updateStats();
