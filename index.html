@@ -172,7 +172,6 @@
            
              // 2.2 WASM (V86)
              let wasmMem = 0;
-              console.log("WASM memory (MB): " + ( / 1024 / 1024).toFixed(2));
              const ramDev = emulator.v86?.cpu?.mem8?.buffer;
              if (ramDev) {
                const buf = ramDev.buffer;
