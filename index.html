@@ -118,17 +118,36 @@
   // 6. Monitoring immédiat
   function updateStats() {
     const toMB = b => (b / 1024 / 1024).toFixed(1) + ' MB';
+  
+    // 1. Mémoire JS
     const mem = performance.memory;
+    let jsHeap = 0;
     if (mem) {
-      const reserved = mem.usedJSHeapSize;
-      const maximum = mem.jsHeapSizeLimit || 0;
-      //document.getElementById('mem_ram').textContent = `${(reserved / 1024 / 1024).toFixed(1)} MB / ${(maximum / 1024 / 1024).toFixed(1)} MB`;
-      document.getElementById('mem_ram').textContent = `${(reserved / 1024 / 1024).toFixed(1)} MB`;
+      jsHeap = mem.usedJSHeapSize;
     }
+  
+    // 2. Estimation mémoire WebAssembly (v86)
+    // Le paramètre MEMORY_SIZE est passé à v86 et défini ici
+    const wasmMemory = 256 * 1024 * 1024; // 256 MB alloués pour la VM
+  
+    // 3. Estimation mémoire Canvas
+    const canvas = document.querySelector("canvas");
+    let canvasMemory = 0;
+    if (canvas && canvas.width && canvas.height) {
+      // 4 octets par pixel (RGBA)
+      canvasMemory = canvas.width * canvas.height * 4;
+    }
+  
+    // 4. Somme estimée
+    const total = jsHeap + wasmMemory + canvasMemory;
+  
+    document.getElementById('mem_ram').textContent = toMB(total);
+  
+    // Réseau
     document.getElementById('net_in').textContent  = (netIn  / 1024).toFixed(1) + ' KB';
     document.getElementById('net_out').textContent = (netOut / 1024).toFixed(1) + ' KB';
   }
-  setInterval(updateStats, 1000);
+  setInterval(updateStats, 200);
   updateStats();
 
   // 7. Charger les scripts externes puis lancer l’émulateur
