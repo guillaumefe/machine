@@ -254,7 +254,11 @@
              };
            
              emulator = new V86(v86Config);
-             setInterval(updateStats, 500);         
+             setInterval(updateStats, 500);
+            emulator.add_listener("emulator-ready", () => {
+               console.log("emulator.get_memory_size");
+            });
+
            }
          
            launchEmulator();
