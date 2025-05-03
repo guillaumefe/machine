@@ -260,29 +260,37 @@
                network_backend: "socket",
              };
            
-             emulator = new V86(v86Config);
+              emulator = new V86(Object.assign(v86Config, {
+                serial_container: screenContainer,
+                serial_read_only: true
+              }));
              setInterval(updateStats, 500);
    
-             emulator.add_listener("emulator-ready", () => {
-               // boucle tant que module.FS n’existe pas
-               const installFSHook = () => {
-                 const FS = emulator.v86.module?.FS;
-                 if (!FS) {
-                   return setTimeout(installFSHook, 100);
-                 }
-                 // patch de write pour compter les octets écrits dans le FS
-                 const origFSwrite = FS.write;
-                 FS.write = function(stream, buffer, offset, length, position, canOwn) {
-                   fsWriteBytes += length;
-                   return origFSwrite.call(this,
-                     stream, buffer, offset, length, position, canOwn
-                   );
-                 };
-               };
-               installFSHook();
-             });
-              
-           }
+           // ── 1) Buffer pour stocker la sortie série ligne à ligne
+           let serialBuf = "";
+         
+           // ── 2) Écouteur qui collecte les caractères envoyés par Linux
+           emulator.add_listener("serial0-output-char", char => {
+             serialBuf += char;
+             if (char === "\n") {
+               const line = serialBuf.trim();
+               serialBuf = "";
+               // On cherche la ligne “Mem:” de la commande free
+               if (line.startsWith("Mem:")) {
+                 // free -b affiche : Mem: TOTAL USED FREE ...
+                 const parts = line.split(/\s+/);
+                 const freeBytes = parseInt(parts[3], 10);
+                 document.getElementById("mem_left")
+                         .textContent = (freeBytes/1024/1024).toFixed(1) + " MB";
+               }
+             }
+           });
+         
+           // ── 3) Toutes les 5 s, on envoie “free -b” dans la VM
+           setInterval(() => {
+             // la commande doit se terminer par \n pour être exécutée
+             emulator.serial0_send("free -b\n");
+           }, 5000);
          
            launchEmulator();
          
