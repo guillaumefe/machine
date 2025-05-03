@@ -116,36 +116,60 @@
   })();
 
   // 6. Monitoring immédiat
-  function updateStats() {
-    const toMB = b => (b / 1024 / 1024).toFixed(1) + ' MB';
+  async function updateStats() {
+    const toMB = b => (b / 1024 / 1024).toFixed(1) + ' MB';
   
-    // 1. Mémoire JS
+    let totalBytes = 0;
+    let details = [];
+  
+    // 1) Si l’API expérimentale existe => on prend la mesure « native » Chrome
+    if (performance.measureUserAgentSpecificMemory) {
+      try {
+        const memInfo = await performance.measureUserAgentSpecificMemory();
+        // memInfo.bytes : total JS + DOM + WASM + GPU…
+        totalBytes = memInfo.bytes;
+        details.push(`Browser total: ${toMB(memInfo.bytes)}`);
+      }
+      catch (e) {
+        console.warn("measureUserAgentSpecificMemory failed:", e);
+      }
+    }
+  
+    // 2) Sinon (ou en plus), estimation manuelle :
+    // 2.1 Heap JS
     const mem = performance.memory;
-    let jsHeap = 0;
-    if (mem) {
-      jsHeap = mem.usedJSHeapSize;
+    const jsHeap = mem ? mem.usedJSHeapSize : 0;
+    details.push(`JS heap: ${toMB(jsHeap)}`);
+  
+    // 2.2 WASM (V86)
+    let wasmMem = 0;
+    if (window.emulator?.bus?.devices?.ram) {
+      wasmMem = emulator.bus.devices.ram.memory.buffer.byteLength;
+      details.push(`WASM (V86): ${toMB(wasmMem)}`);
     }
   
-    // 2. Estimation mémoire WebAssembly (v86)
-    // Le paramètre MEMORY_SIZE est passé à v86 et défini ici
-    const wasmMemory = 256 * 1024 * 1024; // 256 MB alloués pour la VM
-  
-    // 3. Estimation mémoire Canvas
-    const canvas = document.querySelector("canvas");
-    let canvasMemory = 0;
-    if (canvas && canvas.width && canvas.height) {
-      // 4 octets par pixel (RGBA)
-      canvasMemory = canvas.width * canvas.height * 4;
+    // 2.3 Canvas
+    const canvasEl = document.querySelector("canvas");
+    let canvasMem = 0;
+    if (canvasEl && canvasEl.width && canvasEl.height) {
+      canvasMem = canvasEl.width * canvasEl.height * 4;
+      details.push(`Canvas RGBA: ${toMB(canvasMem)}`);
     }
   
-    // 4. Somme estimée
-    const total = jsHeap + wasmMemory + canvasMemory;
+    // Si on n'a pas eu measureUserAgentSpecificMemory, on fait la somme JS+WASM+Canvas
+    if (!totalBytes) {
+      totalBytes = jsHeap + wasmMem + canvasMem;
+      details.unshift(`Estimated total: ${toMB(totalBytes)}`);
+    } else {
+      // on peut aussi afficher notre own breakdown en plus
+      details.push(`Estimate breakdown: ${toMB(jsHeap)}+${toMB(wasmMem)}+${toMB(canvasMem)}`);
+    }
   
-    document.getElementById('mem_ram').textContent = toMB(total);
+    document.getElementById('mem_ram').textContent = toMB(totalBytes);
+    document.getElementById('mem_ram').title = details.join('\n');
   
-    // Réseau
-    document.getElementById('net_in').textContent  = (netIn  / 1024).toFixed(1) + ' KB';
-    document.getElementById('net_out').textContent = (netOut / 1024).toFixed(1) + ' KB';
+    document.getElementById('net_in').textContent  = (netIn  / 1024).toFixed(1) + ' KB';
+    document.getElementById('net_out').textContent = (netOut / 1024).toFixed(1) + ' KB';
   }
   setInterval(updateStats, 200);
   updateStats();
