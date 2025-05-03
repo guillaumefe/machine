@@ -9,7 +9,7 @@
          (function(){
          
            //const ISO = "TinyCore-current.iso";
-           const ISO = "Core-current.iso";
+           //const ISO = "Core-current.iso";
            //const ISO = "slitaz-4.0-xorg-light-isohybrid.iso";
          
            const MEMORY_SIZE = 256 * 1024 * 1024; // 256 MiB
@@ -251,7 +251,8 @@
                bios: { url: "build/bios/seabios.bin" },
                vga_bios: { url: "build/bios/vgabios.bin" },
                memory_size: MEMORY_SIZE,
-               cdrom: { url: ISO },
+    kernel:         { url: "vmlinuz64"    },  
+    initrd:         { url: "core.gz"      },
                cmdline: "console=ttyS0,115200n8",
                serial_container: screenContainer,
                serial_read_only: true,
