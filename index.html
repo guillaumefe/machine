@@ -234,15 +234,16 @@
       network_relay_url: "wss://relay.widgetry.org",
       network_backend: "socket",
     });
+
+    emulator.add_listener("emulator-ready", () => {
+      // on déclenche tout de suite une première mesure
+      updateStats();
+      // puis on boucle toutes les 200 ms
+      setInterval(updateStats, 200);
+    });
+
   }
 
-  emulator.add_listener("emulator-ready", () => {
-    // on déclenche tout de suite une première mesure
-    updateStats();
-    // puis on boucle toutes les 200 ms
-    setInterval(updateStats, 200);
-  });
-  
   launchEmulator();
 
 })();
