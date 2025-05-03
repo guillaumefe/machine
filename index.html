@@ -5,6 +5,9 @@
 <script>
 (function(){
 
+  const ISO = "TinyCore-current.iso";
+  //const ISO = "Core-current.iso";
+  //const ISO = "slitaz-4.0-xorg-light-isohybrid.iso";
 
   // 1. Insérer style global
   const style = document.createElement("style");
@@ -133,7 +136,7 @@
       bios: { url: "build/bios/seabios.bin" },
       vga_bios: { url: "build/bios/vgabios.bin" },
       memory_size: MEMORY_SIZE,
-      cdrom: { url: "slitaz-4.0-xorg-light-isohybrid.iso" },
+      cdrom: { url: ISO },
       screen_container: screenContainer,
       autostart: true,
       disable_memory_cow: true,
