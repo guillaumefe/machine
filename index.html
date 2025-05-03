@@ -229,10 +229,6 @@
            async function launchEmulator() {
              await loadScript("build/pako.min.js");
              await loadScript("build/libv86.js");
-           
-             const hasNativeMemoryAPI =
-               typeof performance.measureUserAgentSpecificMemory === "function" &&
-               performance.memory;
              
              const v86Config = {
                wasm_path: "build/v86.wasm",
@@ -242,16 +238,11 @@
                cdrom: { url: ISO },
                screen_container: screenContainer,
                autostart: true,
-               disable_memory_cow: false,
-               worker: false, 
+               disable_memory_cow: true,
+               worker: true, 
                network_relay_url: "wss://relay.widgetry.org",
                network_backend: "socket",
              };
-             
-             if (hasNativeMemoryAPI) {
-               v86Config.disable_memory_cow = true;
-               v86Config.worker = true;
-             }
            
              emulator = new V86(v86Config);
              
