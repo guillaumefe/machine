@@ -260,10 +260,11 @@
                network_backend: "socket",
              };
            
-              emulator = new V86(Object.assign(v86Config, {
+              windows.emulator = emulator = new V86(Object.assign(v86Config, {
                 serial_container: screenContainer,
                 serial_read_only: true
               }));
+              
              setInterval(updateStats, 500);
    
            // ── 1) Buffer pour stocker la sortie série ligne à ligne
