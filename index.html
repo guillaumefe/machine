@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>WASMSHELL</title></head>
+<head>
+  <meta charset="UTF-8">
+  <title>WASMSHELL</title>
+</head>
 <body>
 <script>
 (function(){
@@ -8,9 +11,8 @@
   let emulator = null;
   let hdaFile = null;
   let hdnFile = null;
-  // Default kernel and initrd (auto-loaded)
-  let kernelFile = { url: "vmlinuz" };
-  let initrdFile = { url: "core.gz" };
+  let kernelFile = null;
+  let initrdFile = null;
 
   // 1. Insert global styles
   const style = document.createElement("style");
@@ -48,7 +50,7 @@
     </span>
     <span>Net In: <b id="net_in">- KB</b></span>
     <span>Net Out: <b id="net_out">- KB</b></span>
-    <button id="start_btn">Start</button> <!-- enabled by default -->
+    <button id="start_btn">Start</button>
     <button id="stop_btn" disabled>Stop</button>
   `;
   document.body.appendChild(header);
@@ -83,7 +85,13 @@
   // 5. Tutorial overlay
   const tutorial = document.createElement("div");
   tutorial.id = "tutorial";
-  tutorial.textContent = `Welcome!\nDefaults loaded: bzImage(vmlinuz), initrd(core.gz)\n(You can still upload custom files)\nClick Start to launch.`;
+  tutorial.textContent = `Welcome!
+Please configure your VM:
+- Create or upload a disk (HDA)
+- (Optional) Create or upload swap (HDB)
+- (Optional) Upload a custom kernel (vmlinuz)
+- (Optional) Upload a custom initrd (core.gz)
+Then click Start.`;
   document.body.appendChild(tutorial);
 
   // 6. Toggle panel
@@ -122,7 +130,7 @@
     }
   });
 
-  // 10. Kernel and initrd handlers (override defaults)
+  // 10. Kernel and initrd handlers
   document.getElementById('upload_kernel').addEventListener('change', (e) => {
     if (e.target.files.length) kernelFile = e.target.files[0];
   });
@@ -130,19 +138,23 @@
     if (e.target.files.length) initrdFile = e.target.files[0];
   });
 
-  // 11. Networking instrumentation (unchanged)
+  // 11. Networking instrumentation
   let netIn = 0, netOut = 0;
-  (function(){ /* original network code omitted for brevity */ })();
+  (function(){ /* original network code omitted for brevity; keep unchanged */
+    const origFetch = window.fetch;
+    window.fetch = async (...args) => { /* ... */ };
+    /* ... keep the rest of instrumentation ... */
+  })();
 
-  // 12. Stats update (unchanged)
+  // 12. Stats update
   async function updateStats() { /* unchanged */ }
   setInterval(updateStats, 200);
   updateStats();
 
-  // 13. Script loader (unchanged)
+  // 13. Script loader
   function loadScript(src) { /* unchanged */ }
 
-  // 14. Launch / start / stop emulator
+  // 14. Launch or start/stop emulator
   async function launchEmulator() {
     await loadScript("build/pako.min.js");
     await loadScript("build/libv86.js");
@@ -159,18 +171,13 @@
       screen_container: screenContainer
     };
 
-    // Use default or uploaded kernel
-    if (kernelFile) {
-      if (kernelFile.url) options.bzimage = { url: kernelFile.url };
-      else options.bzimage = { buffer: kernelFile };
-    }
-    // Use default or uploaded initrd
-    if (initrdFile) {
-      if (initrdFile.url) options.initrd = { url: initrdFile.url };
-      else options.initrd = { buffer: initrdFile };
-    }
+    // Default kernel and initrd
+    options.bzimage = { url: "vmlinuz" };
+    options.initrd = { url: "core.gz" };
+    // Override with user-provided files if available
+    if (kernelFile) options.bzimage = { buffer: kernelFile };
+    if (initrdFile) options.initrd = { buffer: initrdFile };
 
-    // Attach drives if present
     const drives = {};
     if (hdaFile) drives.hda = { buffer: hdaFile };
     if (hdnFile) drives.hdb = { buffer: hdnFile };
@@ -179,15 +186,12 @@
     emulator = new V86(options);
   }
 
-  // Start button
   document.getElementById('start_btn').addEventListener('click', async () => {
     if (!emulator) await launchEmulator();
     emulator.run();
     tutorial.style.display = 'none';
     document.getElementById('stop_btn').disabled = false;
   });
-
-  // Stop button
   document.getElementById('stop_btn').addEventListener('click', () => {
     if (emulator) emulator.stop();
     tutorial.style.display = '';
