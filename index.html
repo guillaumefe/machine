@@ -67,9 +67,15 @@
   </div>
   <div id="screen_container"><canvas></canvas></div>
   <script>
-  // add initrd_path:  "initramfs.cpio.gz" || initrd_path: "rootfs.cpio.gz",
-// add hda || cdrom : { url: "rootfs-hda.img", async: true } (+ optional size ? : 128*1024*1024)
-// add hdb ? (size ? : 128*1024*1024) hdp : obligatoire pour fixer la géométrie 
+  // add initrd_path: defined by user or empty, i.e : "initramfs.cpio.gz" || "rootfs.cpio.gz",
+  // add hda : { url: defined by user or empty, async: true, size : calculated automatically } )
+  // add cdrom : { url: defined by user or empty, async: true, size : calculated automatically } )
+  // add hdb : { url: defined by user or empty, async: true, size : calculated automatically } )
+  // add fda : { url: defined by user or empty, async: true, size : calculated automatically } ) // (floppy)
+  // note : possibilité de demander à v86 de créer un espace disque vierge de taille définie (hda, hdb, fda)
+  // note : utiliser idb comme backend pour hda, hdb, fda avec option { backend: "idb" } pour persistence idb
+  // note : fonctionnalité snapshot possible avec const blob = await emulator.disk_images.hda.get_as_blob(); // ensuite : sauvegarder ce blob manuellement dans IndexedDB ou télécharger
+
   (function(){
     let emulator = null;
     let hdaFile = null;
