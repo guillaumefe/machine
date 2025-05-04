@@ -77,7 +77,9 @@
   // note : fonctionnalité snapshot possible avec const blob = await emulator.disk_images.hda.get_as_blob(); // ensuite : sauvegarder ce blob manuellement dans IndexedDB ou télécharger
   // note : possible de bouton "Exporter depuis IDB" dans interface, qui : démarre la VM sans exécution (autostart: false), attend l’init, puis exporte le blob et l’offre au téléchargement 
   // note : exporter (gros fichier comme) disque hda ou hdb depuis idb de manière progressive et sans charge CPU excessive n’est pas prévu nativement par v86
-  
+  // note : emulator.stop() arrête le CPU émulé, mais ne détruit pas la mémoire (reprendre l’exécution plus tard avec emulator.run();)
+  // note : Mettre la VM en pause via stop() est indispensable pour opération de sauvegarde complète du disque, export vers un blob, lecture fiable du contenu d’idb en dehors de v86.
+    
   (function(){
     let emulator = null;
     let hdaFile = null;
