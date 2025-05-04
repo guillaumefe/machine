@@ -73,8 +73,9 @@
   // add hdb : { url: defined by user or empty, async: true, size : calculated automatically } )
   // add fda : { url: defined by user or empty, async: true, size : calculated automatically } ) // (floppy)
   // note : possibilité de demander à v86 de créer un espace disque vierge de taille définie (hda, hdb, fda)
-  // note : utiliser idb comme backend pour hda, hdb, fda avec option { backend: "idb" } pour persistence idb
+  // note : utiliser idb comme backend pour hda, hdb, fda avec option { backend: "idb" } pour persistence idb // si la persistance via IndexedDB est activée (backend: "idb" et async: true), alors la version enregistrée dans idb est constamment tenue à jour, bloc par bloc, en temps réel, pendant l'exécution de la VM.
   // note : fonctionnalité snapshot possible avec const blob = await emulator.disk_images.hda.get_as_blob(); // ensuite : sauvegarder ce blob manuellement dans IndexedDB ou télécharger
+  // note : possible de bouton "Exporter depuis IDB" dans interface, qui : démarre la VM sans exécution (autostart: false), attend l’init, puis exporte le blob et l’offre au téléchargement 
 
   (function(){
     let emulator = null;
