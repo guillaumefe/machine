@@ -1,76 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <title>WASMSHELL</title>
   <script src="build/libv86.js"></script>
-</head>
-<body>
-<script>
-(function(){
-  // State variables
-  let emulator = null;
-  let hdaFile = null;
-  let hdnFile = null;
-  let kernelFile = null;
-  let initrdFile = null;
-
-  // 1. Insert global styles
-  const style = document.createElement("style");
-  style.textContent = `
+  <style>
     html, body { background: black; margin:0; padding:0; color:#eee; font:12px monospace; }
     #header { position: fixed; top:0; left:0; width:100%; height:24px; background:#222; display:flex; align-items:center; padding:0 8px; box-sizing:border-box; z-index:1000; }
-    #header span, #header button { margin:0 8px; cursor: pointer; background: #333; border: none; color: #eee; padding: 2px 6px; font:12px monospace; }
-    #header button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #side_panel { position: fixed; top:24px; left:0; width:300px; height:calc(100% - 24px); background:#333; color:#eee; padding:16px; box-sizing:border-box; transform: translateX(-100%); transition: transform 0.3s ease; overflow-y: auto; z-index:999; }
-    #side_panel.open { transform: translateX(0); }
-    #screen_container { position:absolute; top:24px; left:0; width: 100vw; height:calc(100% - 24px); display: flex; }
-    #tutorial { position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); color:#aaa; white-space: pre-wrap; text-align:center; line-height:1.5; max-width:400px; }
-    #screen { display: none; }
-    #screen_container canvas { cursor:none; max-width:100%; max-height:100%; width:auto; height:auto; display:block; }
-    #mem_wrapper { position: relative; display: inline-block; }
-    #mem_tooltip { position: absolute; top: 1.5em; left: 0; background: rgba(50,50,50,0.9); color: #eee; padding: 4px 8px; border-radius: 4px; white-space: pre; font-size: 10px; display: none; z-index: 1001; }
-    #mem_wrapper:hover #mem_tooltip { display: block; }
-    .panel-section { margin-bottom: 16px; }
-    .panel-section h3 { margin: 0 0 8px; font-size: 14px; }
-    .panel-section input { display: block; margin: 4px 0 8px; }
-    .panel-section button, .panel-section a { display: block; margin: 4px 0; }
-  `;
-  document.head.appendChild(style);
-
-  // 2. Set title
-  document.title = "WASMSHELL";
-
-  // 3. Header creation
-  const header = document.createElement("div");
-  header.id = "header";
-  header.innerHTML = `
+    #header span, #header button { margin:0 8px; cursor:pointer; background:#333; border:none; color:#eee; padding:2px 6px; font:12px monospace; }
+    #header button:disabled { opacity:0.5; cursor:not-allowed; }
+    #side_panel { position: fixed; top:24px; left:0; width:300px; height:calc(100% - 24px); background:#333; color:#eee; padding:16px; box-sizing:border-box; transform:translateX(-100%); transition:transform 0.3s ease; overflow-y:auto; z-index:999; }
+    #side_panel.open { transform:translateX(0); }
+    #screen_container { position:absolute; top:24px; left:0; width:100vw; height:calc(100% - 24px); display:flex; }
+    #tutorial { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#aaa; white-space:pre-wrap; text-align:center; line-height:1.5; max-width:400px; }
+    .panel-section { margin-bottom:16px; }
+    .panel-section h3 { margin:0 0 8px; font-size:14px; }
+    .panel-section input, .panel-section button, .panel-section a { display:block; margin:4px 0; }
+    .panel-section a { color:#0ff; text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <div id="header">
     <span id="hamburger">☰</span>
-    <span id="mem_wrapper">Memory: <b id="mem_ram">- MB</b>
-      <div id="mem_tooltip">Loading…</div>
-    </span>
-    <span>Net In: <b id="net_in">- KB</b></span>
-    <span>Net Out: <b id="net_out">- KB</b></span>
     <button id="start_btn">Start</button>
     <button id="stop_btn" disabled>Stop</button>
-  `;
-  document.body.appendChild(header);
-
-  // 4. Side panel
-  const panel = document.createElement("div");
-  panel.id = "side_panel";
-  panel.innerHTML = `
+  </div>
+  <div id="side_panel">
     <div class="panel-section">
       <h3>Disk (HDA)</h3>
       <button id="create_hda">Create 1GB Disk</button>
       <input type="file" id="upload_hda" accept="*/*" />
-      <a id="download_hda" style="display:none;" download="hda.img">Download HDA</a>
+      <button id="download_hda_btn" disabled>Download HDA</button>
     </div>
     <div class="panel-section">
       <h3>Swap (HDB)</h3>
       <button id="create_hdb">Create 1GB Swap</button>
       <input type="file" id="upload_hdb" accept="*/*" />
-      <a id="download_hdb" style="display:none;" download="hdb.img">Download HDB</a>
+      <button id="download_hdb_btn" disabled>Download HDB</button>
     </div>
     <div class="panel-section">
       <h3>Kernel</h3>
@@ -80,129 +46,168 @@
       <h3>Initrd</h3>
       <input type="file" id="upload_initrd" accept="*/*" />
     </div>
-  `;
-  document.body.appendChild(panel);
-
-  // 5. Tutorial overlay
-  const tutorial = document.createElement("div");
-  tutorial.id = "tutorial";
-  tutorial.textContent = `Welcome!
-Please configure your VM:
-- Create or upload a disk (HDA)
-- (Optional) Create or upload swap (HDB)
-- (Optional) Upload a custom kernel (vmlinuz)
-- (Optional) Upload a custom initrd (core.gz)
-Then click Start.`;
-  document.body.appendChild(tutorial);
-
-  // 6. Toggle panel
-  document.getElementById('hamburger').addEventListener('click', () => {
-    panel.classList.toggle('open');
-  });
-
-  // 7. Enable download buttons helper
-  function enableDownload(elementId, file) {
-    const link = document.getElementById(elementId);
-    link.href = URL.createObjectURL(file);
-    link.style.display = 'block';
-  }
-
-  // 8. HDA handlers
-  document.getElementById('create_hda').addEventListener('click', () => {
-    hdaFile = new Blob([new ArrayBuffer(1024*1024*1024)]);
-    enableDownload('download_hda', hdaFile);
-  });
-  document.getElementById('upload_hda').addEventListener('change', (e) => {
-    if (e.target.files.length) {
-      hdaFile = e.target.files[0];
-      enableDownload('download_hda', hdaFile);
+    <div class="panel-section">
+      <h3>Memory Size (MB)</h3>
+      <input type="number" id="memory_input" value="1024" min="16" step="16" />
+    </div>
+    <div class="panel-section">
+      <h3>CD-ROM ISO</h3>
+      <input type="file" id="upload_iso" accept=".iso" />
+    </div>
+  </div>
+  <div id="tutorial">
+    Welcome!  
+    Please configure your VM:  
+    - Create or upload a disk (HDA)  
+    - (Optional) Create or upload swap (HDB)  
+    - (Optional) Upload a custom kernel (vmlinuz)  
+    - (Optional) Upload a custom initrd (core.gz)  
+    - (Optional) Upload an ISO image  
+    Then click Start.
+  </div>
+  <div id="screen_container"><canvas></canvas></div>
+  <script>
+  (function(){
+    let emulator = null;
+    let hdaFile = null;
+    let hdaBlobUrl = null;
+    let hdaOriginalFile = null;
+    let hdbFile = null;
+    let hdbBlobUrl = null;
+    let hdbOriginalFile = null;
+    let kernelFile = null;
+    let initrdFile = null;
+    let isoFile = null;
+    let memorySize = 1024 * 1024 * 1024;
+    const panel = document.getElementById('side_panel');
+    document.getElementById('hamburger').onclick = ()=> panel.classList.toggle('open');
+    const createHda = document.getElementById('create_hda');
+    const uploadHda = document.getElementById('upload_hda');
+    const downloadHdaBtn = document.getElementById('download_hda_btn');
+    const createHdb = document.getElementById('create_hdb');
+    const uploadHdb = document.getElementById('upload_hdb');
+    const downloadHdbBtn = document.getElementById('download_hdb_btn');
+    const uploadKernel = document.getElementById('upload_kernel');
+    const uploadInitrd = document.getElementById('upload_initrd');
+    const uploadIso = document.getElementById('upload_iso');
+    const memoryInput = document.getElementById('memory_input');
+    const allInputs = [
+      createHda, uploadHda, createHdb, uploadHdb,
+      uploadKernel, uploadInitrd, uploadIso, memoryInput
+    ];
+    function setInputsDisabled(state) {
+      for (const input of allInputs) input.disabled = state;
     }
-  });
-
-  // 9. HDB (swap) handlers
-  document.getElementById('create_hdb').addEventListener('click', () => {
-    hdnFile = new Blob([new ArrayBuffer(1024*1024*1024)]);
-    enableDownload('download_hdb', hdnFile);
-  });
-  document.getElementById('upload_hdb').addEventListener('change', (e) => {
-    if (e.target.files.length) {
-      hdnFile = e.target.files[0];
-      enableDownload('download_hdb', hdnFile);
+    function triggerDownload(blob, name) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-  });
-
-  // 10. Kernel and initrd handlers
-  document.getElementById('upload_kernel').addEventListener('change', (e) => {
-    if (e.target.files.length) kernelFile = e.target.files[0];
-  });
-  document.getElementById('upload_initrd').addEventListener('change', (e) => {
-    if (e.target.files.length) initrdFile = e.target.files[0];
-  });
-
-  // 11. Networking instrumentation
-  let netIn = 0, netOut = 0;
-  (function(){ /* original network code omitted for brevity; keep unchanged */
-    const origFetch = window.fetch;
-    window.fetch = async (...args) => { /* ... */ };
-    /* ... keep the rest of instrumentation ... */
-  })();
-
-  // 12. Stats update
-  async function updateStats() { /* unchanged */ }
-  setInterval(updateStats, 200);
-  updateStats();
-
-  // 13. Script loader
-  function loadScript(src) { /* unchanged */ }
-
-  // 14. Launch or start/stop emulator
-  async function launchEmulator() {
-    await loadScript("build/libv86.js");
-
-    const options = {
-      wasm_path: "build/v86.wasm",
-      bios: { url: "build/bios/seabios.bin" },
-      vga_bios: { url: "build/bios/vgabios.bin" },
-      memory_size: 1024 * 1024 * 1024,
-      autostart: false,
-      disable_memory_cow: true,
-      network_relay_url: "wss://relay.widgetry.org",
-      network_backend: "socket",
-      screen_container: screenContainer
+    createHda.onclick = () => {
+      if (hdaBlobUrl) URL.revokeObjectURL(hdaBlobUrl);
+      hdaFile = new Blob([new ArrayBuffer(1024 * 1024 * 1024)]);
+      hdaBlobUrl = URL.createObjectURL(hdaFile);
+      hdaOriginalFile = null;
+      uploadHda.value = '';
+      downloadHdaBtn.disabled = false;
+      createHda.disabled = true;
     };
-
-    // Default kernel and initrd
-    options.bzimage = { url: "vmlinuz" };
-    options.initrd = { url: "core.gz" };
-    // Override with user-provided files if available
-    if (kernelFile) options.bzimage = { buffer: kernelFile };
-    if (initrdFile) options.initrd = { buffer: initrdFile };
-
-    const drives = {};
-    if (hdaFile) drives.hda = { buffer: hdaFile };
-    if (hdnFile) drives.hdb = { buffer: hdnFile };
-    if (Object.keys(drives).length) options.drives = drives;
-
-    emulator = new V86(options);
-  }
-
-  document.getElementById('start_btn').addEventListener('click', async () => {
-    if (!emulator) await launchEmulator();
-    emulator.run();
-    tutorial.style.display = 'none';
-    document.getElementById('stop_btn').disabled = false;
-  });
-  document.getElementById('stop_btn').addEventListener('click', () => {
-    if (emulator) emulator.stop();
-    tutorial.style.display = '';
-  });
-
-  // 15. Initialize screen container reference
-  const screenContainer = document.getElementById('screen_container');
-
-})();
-</script>
-
-<div id="screen_container"><div id="screen"></div><canvas></canvas></div>
+    uploadHda.onchange = e => {
+      if (!e.target.files.length) return;
+      if (hdaBlobUrl) {
+        URL.revokeObjectURL(hdaBlobUrl);
+        hdaBlobUrl = null;
+      }
+      hdaFile = e.target.files[0];
+      hdaOriginalFile = hdaFile;
+      downloadHdaBtn.disabled = false;
+      createHda.disabled = false;
+    };
+    createHdb.onclick = () => {
+      if (hdbBlobUrl) URL.revokeObjectURL(hdbBlobUrl);
+      hdbFile = new Blob([new ArrayBuffer(1024 * 1024 * 1024)]);
+      hdbBlobUrl = URL.createObjectURL(hdbFile);
+      hdbOriginalFile = null;
+      uploadHdb.value = '';
+      downloadHdbBtn.disabled = false;
+      createHdb.disabled = true;
+    };
+    uploadHdb.onchange = e => {
+      if (!e.target.files.length) return;
+      if (hdbBlobUrl) {
+        URL.revokeObjectURL(hdbBlobUrl);
+        hdbBlobUrl = null;
+      }
+      hdbFile = e.target.files[0];
+      hdbOriginalFile = hdbFile;
+      downloadHdbBtn.disabled = false;
+      createHdb.disabled = false;
+    };
+    downloadHdaBtn.onclick = () => {
+      if (emulator && emulator.disk_images?.hda) {
+        emulator.disk_images.hda.get_as_blob().then(blob => triggerDownload(blob, 'hda.img'));
+      } else if (hdaOriginalFile) {
+        triggerDownload(hdaOriginalFile, hdaOriginalFile.name);
+      } else if (hdaFile) {
+        triggerDownload(hdaFile, 'hda.img');
+      }
+    };
+    downloadHdbBtn.onclick = () => {
+      if (emulator && emulator.disk_images?.hdb) {
+        emulator.disk_images.hdb.get_as_blob().then(blob => triggerDownload(blob, 'hdb.img'));
+      } else if (hdbOriginalFile) {
+        triggerDownload(hdbOriginalFile, hdbOriginalFile.name);
+      } else if (hdbFile) {
+        triggerDownload(hdbFile, 'hdb.img');
+      }
+    };
+    uploadKernel.onchange = e => { if (e.target.files.length) kernelFile = e.target.files[0]; };
+    uploadInitrd.onchange = e => { if (e.target.files.length) initrdFile = e.target.files[0]; };
+    uploadIso.onchange = e => { if (e.target.files.length) isoFile = e.target.files[0]; };
+    memoryInput.onchange = e => { memorySize = parseInt(e.target.value) * 1024 * 1024; };
+    async function launch() {
+      await new Promise(r => {
+        const s = document.createElement('script');
+        s.src = 'build/libv86.js'; s.onload = r; document.head.appendChild(s);
+      });
+      const opts = {
+        wasm_path: 'build/v86.wasm',
+        bios: { url: 'build/bios/seabios.bin' },
+        vga_bios: { url: 'build/bios/vgabios.bin' },
+        memory_size: memorySize,
+        autostart: false,
+        disable_memory_cow: true,
+        network_relay_url: 'wss://relay.widgetry.org',
+        network_backend: 'socket',
+        screen_container: document.getElementById('screen_container')
+      };
+      if (kernelFile) opts.bzimage = { buffer: kernelFile };
+      if (initrdFile) opts.initrd = { buffer: initrdFile };
+      if (isoFile) opts.cdrom = { buffer: isoFile };
+      const drives = {};
+      if (hdaFile) drives.hda = { buffer: hdaFile };
+      if (hdbFile) drives.hdb = { buffer: hdbFile };
+      if (Object.keys(drives).length) opts.drives = drives;
+      emulator = new V86(opts);
+    }
+    document.getElementById('start_btn').onclick = async () => {
+      if (!emulator) await launch();
+      emulator.run();
+      document.getElementById('tutorial').style.display = 'none';
+      document.getElementById('stop_btn').disabled = false;
+      setInputsDisabled(true);
+    };
+    document.getElementById('stop_btn').onclick = () => {
+      if (emulator) emulator.stop();
+      document.getElementById('tutorial').style.display = '';
+      setInputsDisabled(false);
+    };
+  })();
+  </script>
 </body>
 </html>
