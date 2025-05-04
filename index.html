@@ -208,7 +208,7 @@
     await loadScript("build/pako.min.js");
     await loadScript("build/libv86.js");
 
-    const MEMORY_SIZE = 128 * 1024 * 1024;
+    const MEMORY_SIZE = 64 * 1024 * 1024;
 
     new V86({
       wasm_path: "build/v86.wasm",
