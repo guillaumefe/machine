@@ -68,6 +68,10 @@
   <div id="screen_container"><canvas></canvas></div>
   <script>
   // add initrd_path:  "initramfs.cpio.gz" || initrd_path: "rootfs.cpio.gz",
+  // add on_ready: function() {
+    // créer un fichier directement dans le FS émulé
+    //FS.writeFile("/boot/mon-fichier.txt", "Hello v86!\n");
+  //}
   (function(){
     let emulator = null;
     let hdaFile = null;
