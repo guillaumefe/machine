@@ -11,12 +11,20 @@
     #header button:disabled { opacity:0.5; cursor:not-allowed; }
     #side_panel { position: fixed; top:24px; left:0; width:300px; height:calc(100% - 24px); background:#333; color:#eee; padding:16px; box-sizing:border-box; transform:translateX(-100%); transition:transform 0.3s ease; overflow-y:auto; z-index:999; }
     #side_panel.open { transform:translateX(0); }
-    #screen_container { position:absolute; top:24px; left:0; width:100vw; height:calc(100% - 24px); display:flex; }
     #tutorial { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#aaa; white-space:pre-wrap; text-align:center; line-height:1.5; max-width:400px; }
     .panel-section { margin-bottom:16px; }
     .panel-section h3 { margin:0 0 8px; font-size:14px; }
     .panel-section input, .panel-section button, .panel-section a { display:block; margin:4px 0; }
     .panel-section a { color:#0ff; text-decoration:underline; }
+    #screen_container { position:absolute; top:24px; left:0; width:100vw; height:calc(100% - 24px); display:flex; }
+    #screen_container.hide-cursor {
+      cursor: none !important;
+    }
+    #screen_container canvas {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain;
+    }
   </style>
 </head>
 <body>
@@ -60,6 +68,12 @@
     <div class="panel-section">
       <h3>CD-ROM ISO</h3>
       <input type="file" id="upload_iso" accept=".iso" />
+      <select id="select_iso">
+        <option value="">-- Choisir une ISO intégrée --</option>
+        <option value="Core-current.iso">Core-current.iso</option>
+        <option value="TinyCore-current.iso">TinyCore-current.iso</option>
+        <option value="slitaz-4.0-xorg-light-isohybrid.iso">slitaz-4.0-xorg-light-isohybrid.iso</option>
+      </select>
     </div>
   </div>
   <div id="tutorial">
@@ -86,8 +100,10 @@
     let kernelFile = null;
     let initrdFile = null;
     let isoFile = null;
+    let isoUrl   = null;
     let memorySize = 1024 * 1024 * 1024;
     const panel = document.getElementById('side_panel');
+    const screenContainer = document.getElementById('screen_container');
     document.getElementById('hamburger').onclick = ()=> panel.classList.toggle('open');
     const startBtn = document.getElementById('start_btn');
     const stopBtn = document.getElementById('stop_btn');
@@ -104,6 +120,7 @@
     const uploadKernel = document.getElementById('upload_kernel');
     const uploadInitrd = document.getElementById('upload_initrd');
     const uploadIso = document.getElementById('upload_iso');
+    const selectIso = document.getElementById('select_iso');
     const memoryInput = document.getElementById('memory_input');
     const allInputs = [
       createHda, uploadHda, createHdb, uploadHdb,
@@ -177,7 +194,26 @@
     };
     uploadKernel.onchange = e => { if (e.target.files.length) kernelFile = e.target.files[0]; };
     uploadInitrd.onchange = e => { if (e.target.files.length) initrdFile = e.target.files[0]; };
-    uploadIso.onchange = e => { if (e.target.files.length) isoFile = e.target.files[0]; };
+    selectIso.onchange = e => {
+      const fileName = e.target.value;
+      if (fileName) {
+        isoUrl  = fileName;   // URL relative (serveur)
+        isoFile = null;       // on désactive l'upload manuelle
+      } else {
+        isoUrl = null;
+      }
+      // On vide le file input pour clarifier l'UI
+      uploadIso.value = '';
+    };
+    uploadIso.onchange = e => {
+      if (e.target.files.length) {
+        isoFile = e.target.files[0];
+	isoUrl  = null;
+        selectIso.value = '';
+      } else {
+	isoFile = null;
+      }
+    };
     memoryInput.onchange = e => { memorySize = parseInt(e.target.value) * 1024 * 1024; };
 
     async function launch() {
@@ -192,11 +228,20 @@
         network_backend: 'socket',
         screen_container: document.getElementById('screen_container')
       };
-      if (kernelFile) opts.bzimage = { buffer: kernelFile };
-      else opts.bzimage = { url: 'vmlinuz' };
-      if (initrdFile) opts.initrd = { buffer: initrdFile };
-      else opts.initrd = { url: 'core.gz' };
-      if (isoFile) opts.cdrom = { buffer: isoFile, async: true, size: isoFile.size };
+      if (isoUrl || isoFile) {
+        opts.boot_order = 0x321;       // CD / HD / Floppy :contentReference[oaicite:1]{index=1}
+        opts.cdrom = isoUrl
+          ? { url: isoUrl, async: true }
+          : { buffer: isoFile, async: true, size: isoFile.size };
+      }
+      else {
+        opts.bzimage = kernelFile
+          ? { buffer: kernelFile }
+          : { url: 'vmlinuz' };
+        opts.initrd = initrdFile
+          ? { buffer: initrdFile }
+          : { url: 'core.gz' };
+      }
       const drives = {};
       if (hdaFile) drives.hda = { buffer: hdaFile, async: true, size: hdaFile.size, backend: "idb", name: "hda" };
       if (hdbFile) drives.hdb = { buffer: hdbFile, async: true, size: hdbFile.size, backend: "idb", name: "hdb" };
@@ -244,12 +289,14 @@
     };
 
     startBtn.onclick = async () => {
+      panel.classList.remove('open');
       if (!emulator) await launch();
       emulator.run();
       document.getElementById('tutorial').style.display = 'none';
       stopBtn.disabled = false;
       destroyBtn.disabled = true;
       setInputsDisabled(true);
+      screenContainer.classList.add('hide-cursor');
     };
 
     stopBtn.onclick = () => {
@@ -257,6 +304,7 @@
       document.getElementById('tutorial').style.display = '';
       destroyBtn.disabled = false;
       setInputsDisabled(false);
+      screenContainer.classList.remove('hide-cursor');
     };
 
     destroyBtn.onclick = () => {
@@ -268,9 +316,9 @@
       document.getElementById('tutorial').style.display = '';
       destroyBtn.disabled = true;
       setInputsDisabled(false);
+      screenContainer.classList.remove('hide-cursor');
     };
   })();
   </script>
 </body>
 </html>
-
