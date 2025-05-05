@@ -24,6 +24,7 @@
     <span id="hamburger">☰</span>
     <button id="start_btn">Start</button>
     <button id="stop_btn" disabled>Stop</button>
+    <button id="destroy_btn" disabled>Destroy</button>
   </div>
   <div id="side_panel">
     <div class="panel-section">
@@ -37,6 +38,12 @@
       <button id="create_hdb">Create 1GB Swap</button>
       <input type="file" id="upload_hdb" accept="*/*" />
       <button id="download_hdb_btn" disabled>Download HDB</button>
+    </div>
+    <div class="panel-section">
+      <h3>Floppy (FDA)</h3>
+      <button id="create_fda">Create 1.44MB Floppy</button>
+      <input type="file" id="upload_fda" accept="*/*" />
+      <button id="download_fda_btn" disabled>Download FDA</button>
     </div>
     <div class="panel-section">
       <h3>Kernel</h3>
@@ -60,57 +67,52 @@
     Please configure your VM:  
     - Create or upload a disk (HDA)  
     - (Optional) Create or upload swap (HDB)  
+    - (Optional) Create or upload floppy (FDA)  
     - (Optional) Upload a custom kernel (vmlinuz)  
     - (Optional) Upload a custom initrd (core.gz)  
     - (Optional) Upload an ISO image  
     Then click Start.
   </div>
-  <div id="screen_container"><canvas></canvas></div>
+  <div id="screen_container">
+    <div id="screen"></div>
+    <canvas></canvas>
+  </div>
   <script>
-  // add initrd_path: defined by user or empty, i.e : "initramfs.cpio.gz" || "rootfs.cpio.gz",
-  // add hda : { url: defined by user or empty, async: true, size : calculated automatically } )
-  // add cdrom : { url: defined by user or empty, async: true, size : calculated automatically } )
-  // add hdb : { url: defined by user or empty, async: true, size : calculated automatically } )
-  // add fda : { url: defined by user or empty, async: true, size : calculated automatically } ) // (floppy)
-  // note : possibilité de demander à v86 de créer un espace disque vierge de taille définie (hda, hdb, fda)
-  // note : utiliser idb comme backend pour hda, hdb, fda avec option { backend: "idb" } pour persistence idb // si la persistance via IndexedDB est activée (backend: "idb" et async: true), alors la version enregistrée dans idb est constamment tenue à jour, bloc par bloc, en temps réel, pendant l'exécution de la VM.
-  // note : fonctionnalité snapshot possible avec const blob = await emulator.disk_images.hda.get_as_blob(); // ensuite : sauvegarder ce blob manuellement dans IndexedDB ou télécharger
-  // note : possible de bouton "Exporter depuis IDB" dans interface, qui : démarre la VM sans exécution (autostart: false), attend l’init, puis exporte le blob et l’offre au téléchargement 
-  // note : exporter (gros fichier comme) disque hda ou hdb depuis idb de manière progressive et sans charge CPU excessive n’est pas prévu nativement par v86
-  // note : emulator.stop() arrête le CPU émulé, mais ne détruit pas la mémoire (reprendre l’exécution plus tard avec emulator.run();)
-  // note : Mettre la VM en pause via stop() est indispensable pour opération de sauvegarde complète du disque, export vers un blob, lecture fiable du contenu d’idb en dehors de v86.
-  // Pour arrêter la machine dans v86 : interrompre l'exécution, libérer toute la ram, détruire les périphériques virtuels (disques, réseau, etc.), il faut détruire l’instance emulator : emulator.stop(); emulator.destroy_all_devices(); emulator = null;
-    
   (function(){
     let emulator = null;
-    let hdaFile = null;
-    let hdaBlobUrl = null;
-    let hdaOriginalFile = null;
-    let hdbFile = null;
-    let hdbBlobUrl = null;
-    let hdbOriginalFile = null;
+    let hdaFile = null, hdaBlobUrl = null, hdaOriginalFile = null;
+    let hdbFile = null, hdbBlobUrl = null, hdbOriginalFile = null;
+    let fdaFile = null, fdaBlobUrl = null, fdaOriginalFile = null;
     let kernelFile = null;
     let initrdFile = null;
     let isoFile = null;
     let memorySize = 1024 * 1024 * 1024;
     const panel = document.getElementById('side_panel');
     document.getElementById('hamburger').onclick = ()=> panel.classList.toggle('open');
+    const startBtn = document.getElementById('start_btn');
+    const stopBtn = document.getElementById('stop_btn');
+    const destroyBtn = document.getElementById('destroy_btn');
     const createHda = document.getElementById('create_hda');
     const uploadHda = document.getElementById('upload_hda');
     const downloadHdaBtn = document.getElementById('download_hda_btn');
     const createHdb = document.getElementById('create_hdb');
     const uploadHdb = document.getElementById('upload_hdb');
     const downloadHdbBtn = document.getElementById('download_hdb_btn');
+    const createFda = document.getElementById('create_fda');
+    const uploadFda = document.getElementById('upload_fda');
+    const downloadFdaBtn = document.getElementById('download_fda_btn');
     const uploadKernel = document.getElementById('upload_kernel');
     const uploadInitrd = document.getElementById('upload_initrd');
     const uploadIso = document.getElementById('upload_iso');
     const memoryInput = document.getElementById('memory_input');
     const allInputs = [
       createHda, uploadHda, createHdb, uploadHdb,
-      uploadKernel, uploadInitrd, uploadIso, memoryInput
+      createFda, uploadFda, uploadKernel, uploadInitrd, uploadIso, memoryInput
     ];
     function setInputsDisabled(state) {
       for (const input of allInputs) input.disabled = state;
+      startBtn.disabled = state;
+      stopBtn.disabled = !state ? true : false;
     }
     function triggerDownload(blob, name) {
       const url = URL.createObjectURL(blob);
@@ -133,10 +135,7 @@
     };
     uploadHda.onchange = e => {
       if (!e.target.files.length) return;
-      if (hdaBlobUrl) {
-        URL.revokeObjectURL(hdaBlobUrl);
-        hdaBlobUrl = null;
-      }
+      if (hdaBlobUrl) { URL.revokeObjectURL(hdaBlobUrl); hdaBlobUrl = null; }
       hdaFile = e.target.files[0];
       hdaOriginalFile = hdaFile;
       downloadHdaBtn.disabled = false;
@@ -153,42 +152,35 @@
     };
     uploadHdb.onchange = e => {
       if (!e.target.files.length) return;
-      if (hdbBlobUrl) {
-        URL.revokeObjectURL(hdbBlobUrl);
-        hdbBlobUrl = null;
-      }
+      if (hdbBlobUrl) { URL.revokeObjectURL(hdbBlobUrl); hdbBlobUrl = null; }
       hdbFile = e.target.files[0];
       hdbOriginalFile = hdbFile;
       downloadHdbBtn.disabled = false;
       createHdb.disabled = false;
     };
-    downloadHdaBtn.onclick = () => {
-      if (emulator && emulator.disk_images?.hda) {
-        emulator.disk_images.hda.get_as_blob().then(blob => triggerDownload(blob, 'hda.img'));
-      } else if (hdaOriginalFile) {
-        triggerDownload(hdaOriginalFile, hdaOriginalFile.name);
-      } else if (hdaFile) {
-        triggerDownload(hdaFile, 'hda.img');
-      }
+    createFda.onclick = () => {
+      if (fdaBlobUrl) URL.revokeObjectURL(fdaBlobUrl);
+      fdaFile = new Blob([new ArrayBuffer(1440 * 1024)]);
+      fdaBlobUrl = URL.createObjectURL(fdaFile);
+      fdaOriginalFile = null;
+      uploadFda.value = '';
+      downloadFdaBtn.disabled = false;
+      createFda.disabled = true;
     };
-    downloadHdbBtn.onclick = () => {
-      if (emulator && emulator.disk_images?.hdb) {
-        emulator.disk_images.hdb.get_as_blob().then(blob => triggerDownload(blob, 'hdb.img'));
-      } else if (hdbOriginalFile) {
-        triggerDownload(hdbOriginalFile, hdbOriginalFile.name);
-      } else if (hdbFile) {
-        triggerDownload(hdbFile, 'hdb.img');
-      }
+    uploadFda.onchange = e => {
+      if (!e.target.files.length) return;
+      if (fdaBlobUrl) { URL.revokeObjectURL(fdaBlobUrl); fdaBlobUrl = null; }
+      fdaFile = e.target.files[0];
+      fdaOriginalFile = fdaFile;
+      downloadFdaBtn.disabled = false;
+      createFda.disabled = false;
     };
     uploadKernel.onchange = e => { if (e.target.files.length) kernelFile = e.target.files[0]; };
     uploadInitrd.onchange = e => { if (e.target.files.length) initrdFile = e.target.files[0]; };
     uploadIso.onchange = e => { if (e.target.files.length) isoFile = e.target.files[0]; };
     memoryInput.onchange = e => { memorySize = parseInt(e.target.value) * 1024 * 1024; };
+
     async function launch() {
-      await new Promise(r => {
-        const s = document.createElement('script');
-        s.src = 'build/libv86.js'; s.onload = r; document.head.appendChild(s);
-      });
       const opts = {
         wasm_path: 'build/v86.wasm',
         bios: { url: 'build/bios/seabios.bin' },
@@ -201,27 +193,84 @@
         screen_container: document.getElementById('screen_container')
       };
       if (kernelFile) opts.bzimage = { buffer: kernelFile };
+      else opts.bzimage = { url: 'vmlinuz' };
       if (initrdFile) opts.initrd = { buffer: initrdFile };
-      if (isoFile) opts.cdrom = { buffer: isoFile };
+      else opts.initrd = { url: 'core.gz' };
+      if (isoFile) opts.cdrom = { buffer: isoFile, async: true, size: isoFile.size };
       const drives = {};
-      if (hdaFile) drives.hda = { buffer: hdaFile };
-      if (hdbFile) drives.hdb = { buffer: hdbFile };
+      if (hdaFile) drives.hda = { buffer: hdaFile, async: true, size: hdaFile.size, backend: "idb", name: "hda" };
+      if (hdbFile) drives.hdb = { buffer: hdbFile, async: true, size: hdbFile.size, backend: "idb", name: "hdb" };
+      if (fdaFile) drives.fda = { buffer: fdaFile, async: true, size: fdaFile.size, backend: "idb", name: "fda" };
       if (Object.keys(drives).length) opts.drives = drives;
       emulator = new V86(opts);
+      return new Promise(resolve => {
+        emulator.add_listener("emulator-ready", () => resolve());
+      });
     }
-    document.getElementById('start_btn').onclick = async () => {
+
+    async function exportFromIDB(driveName, fileName) {
+      if (!emulator) await launch();
+      emulator.stop();
+      destroyBtn.disabled = false;
+      const blob = await emulator.disk_images[driveName].get_as_blob();
+      triggerDownload(blob, fileName);
+    }
+
+    downloadHdaBtn.onclick = async () => {
+      if (hdaOriginalFile || hdaBlobUrl) {
+        if (hdaOriginalFile) triggerDownload(hdaOriginalFile, hdaOriginalFile.name);
+        else triggerDownload(hdaFile, 'hda.img');
+      } else {
+        await exportFromIDB('hda', 'hda.img');
+      }
+    };
+
+    downloadHdbBtn.onclick = async () => {
+      if (hdbOriginalFile || hdbBlobUrl) {
+        if (hdbOriginalFile) triggerDownload(hdbOriginalFile, hdbOriginalFile.name);
+        else triggerDownload(hdbFile, 'hdb.img');
+      } else {
+        await exportFromIDB('hdb', 'hdb.img');
+      }
+    };
+
+    downloadFdaBtn.onclick = async () => {
+      if (fdaOriginalFile || fdaBlobUrl) {
+        if (fdaOriginalFile) triggerDownload(fdaOriginalFile, fdaOriginalFile.name);
+        else triggerDownload(fdaFile, 'fda.img');
+      } else {
+        await exportFromIDB('fda', 'fda.img');
+      }
+    };
+
+    startBtn.onclick = async () => {
       if (!emulator) await launch();
       emulator.run();
       document.getElementById('tutorial').style.display = 'none';
-      document.getElementById('stop_btn').disabled = false;
+      stopBtn.disabled = false;
+      destroyBtn.disabled = true;
       setInputsDisabled(true);
     };
-    document.getElementById('stop_btn').onclick = () => {
+
+    stopBtn.onclick = () => {
       if (emulator) emulator.stop();
       document.getElementById('tutorial').style.display = '';
+      destroyBtn.disabled = false;
+      setInputsDisabled(false);
+    };
+
+    destroyBtn.onclick = () => {
+      if (emulator) {
+        emulator.stop();
+        emulator.destroy();
+        emulator = null;
+      }
+      document.getElementById('tutorial').style.display = '';
+      destroyBtn.disabled = true;
       setInputsDisabled(false);
     };
   })();
   </script>
 </body>
 </html>
+
